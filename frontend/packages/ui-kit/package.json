@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
     "./approval-transfer": "./src/ApprovalTransfer.tsx",
+    "./directory-person-picker": "./src/DirectoryPersonPicker.tsx",
     "./requisition-notices": "./src/RequisitionNotices.tsx"
   },
   "scripts": {

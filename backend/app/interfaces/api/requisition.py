@@ -23,6 +23,27 @@ router = APIRouter(prefix="/api/v1", tags=["requisitions"])
 Context = Annotated[Ctx, Depends(context)]
 
 
+@router.get("/hr/requisition-form/departments")
+def form_departments(request: Request, ctx: Context, requisition_id: str | None = None):
+    with request.app.state.container.scope() as services:
+        return services.requisition.form_departments(ctx, requisition_id)
+
+
+@router.get("/hr/requisition-form/users")
+def form_users(
+    request: Request,
+    ctx: Context,
+    dept: str = Query(max_length=100),
+    q: str = Query("", max_length=100),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    selected: list[str] = Query(default=[], max_length=50),
+    requisition_id: str | None = None,
+):
+    with request.app.state.container.scope() as services:
+        return services.requisition.form_users(ctx, dept, q, page, size, selected, requisition_id)
+
+
 @router.get("/hr/requisition-notifications")
 def notifications(request: Request, ctx: Context):
     with request.app.state.container.scope() as services:

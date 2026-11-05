@@ -69,7 +69,7 @@ test('组织配置联调：授权、试算、历史恢复与在途审批快照',
   await expect(dialog.getByRole('row')).toHaveCount(3);
   await dialog.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('tab', { name: '组织与审批配置' }).click();
-  const dept = page.getByRole('row').filter({ has: page.getByText(DEPT, { exact: true }) });
+  const dept = page.locator(`tr[data-row-key="${DEPT}"]`);
   await dept.getByRole('button', { name: '配置审批人' }).click();
   await dialog.getByLabel('HRBP', { exact: true }).press('ArrowDown');
   await page
@@ -129,7 +129,7 @@ test('组织配置联调：授权、试算、历史恢复与在途审批快照',
 test('组织配置冲突保留输入，并阻止移除最后一名管理员', async ({ page, request }) => {
   await login(page, 'admin');
   await page.goto('/settings/organization');
-  const dept = page.getByRole('row').filter({ has: page.getByText(DEPT, { exact: true }) });
+  const dept = page.locator(`tr[data-row-key="${DEPT}"]`);
   await dept.getByRole('button', { name: '配置审批人' }).click();
   const dialog = page.getByRole('dialog');
   const before = await request.get(`${API}/admin/organization/departments`, {

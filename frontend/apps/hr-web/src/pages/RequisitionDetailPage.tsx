@@ -100,7 +100,7 @@ export function RequisitionDetailPage() {
         bordered
         column={2}
         items={Object.entries(req.fields)
-          .filter(([key]) => key !== 'confidential' && key !== 'visibleTo')
+          .filter(([key]) => !['confidential', 'visibleTo', 'reportToId'].includes(key))
           .map(([key, value]) => ({
             key,
             label: FIELD_LABELS[key] ?? key,

@@ -23,6 +23,8 @@ import { useApi, toAppError, type RequisitionDetail } from '@recruiter/api-clien
 import type { FieldValue, PendingDecision } from '@recruiter/domain';
 import { track } from '@recruiter/telemetry';
 import { FieldSourceTag, PendingDecisionField } from '@recruiter/ui-kit';
+import { DirectoryPersonPicker } from '@recruiter/ui-kit/directory-person-picker';
+import { DepartmentPicker } from './DepartmentPicker';
 import { usePrecheck, useSaveRequisition, useSubmitRequisition } from '../api';
 
 type Kind = 'text' | 'textarea' | 'number' | 'radio' | 'select';
@@ -51,7 +53,6 @@ const GROUPS: { title: string; fields: FieldDef[] }[] = [
         label: '需求部门',
         kind: 'select',
         required: true,
-        options: ['客服中心', '销售部 / 华南大区', '经营分析部', '财务部'],
       },
       {
         key: 'employmentType',
@@ -83,7 +84,6 @@ const GROUPS: { title: string; fields: FieldDef[] }[] = [
         label: '汇报对象',
         kind: 'select',
         required: true,
-        options: ['何美玲', '田野', '周振华'],
       },
       {
         key: 'expectedOnboard',
@@ -218,6 +218,32 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
   const renderControl = (d: FieldDef) => {
     const v = fields[d.key]?.value ?? '';
     const common = { id: `f-${d.key}`, 'aria-required': d.required };
+    if (d.key === 'dept')
+      return (
+        <DepartmentPicker
+          value={v}
+          requisitionId={initial?.id}
+          onChange={(value) => set('dept', value)}
+        />
+      );
+    if (d.key === 'reportTo')
+      return (
+        <DirectoryPersonPicker
+          id="f-reportTo"
+          label="汇报对象"
+          dept={fields.dept?.value ?? ''}
+          requisitionId={initial?.id}
+          value={fields.reportToId?.value ? [fields.reportToId.value] : []}
+          legacyName={v}
+          onChange={(ids, name) =>
+            setFields((old) => ({
+              ...old,
+              reportToId: { value: ids[0] ?? '', source: 'edited' },
+              reportTo: { value: name, source: 'edited' },
+            }))
+          }
+        />
+      );
     switch (d.kind) {
       case 'radio':
         return (
@@ -376,19 +402,18 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
                   {confidential && (
                     <div style={{ marginTop: 12 }}>
                       <label htmlFor="f-visibleTo">可见人员</label>
-                      <Select
+                      <DirectoryPersonPicker
                         id="f-visibleTo"
-                        mode="multiple"
-                        style={{ width: '100%' }}
+                        label="可见人员"
+                        multiple
+                        dept={fields.dept?.value ?? ''}
+                        requisitionId={initial?.id}
                         value={(fields.visibleTo?.value ?? '').split(',').filter(Boolean)}
-                        options={[
-                          { value: 'hr', label: '林悦' },
-                          { value: 'manager', label: '何美玲' },
-                          { value: 'hrbp', label: '人力伙伴' },
-                          { value: 'director', label: '部门负责人' },
-                        ]}
                         onChange={(values: string[]) => set('visibleTo', values.join(','))}
                       />
+                      <p className="muted">
+                        发起人、归属经理、交接负责人及审批链自动包含，无需重复选择。
+                      </p>
                     </div>
                   )}
                 </div>

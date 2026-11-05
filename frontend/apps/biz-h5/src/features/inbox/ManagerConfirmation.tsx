@@ -1,4 +1,5 @@
 import { Button, TextArea } from 'antd-mobile';
+import { DirectoryPersonPicker } from '@recruiter/ui-kit/directory-person-picker';
 import {
   CONFIRMATION_FIELDS,
   confirmationFieldLabel,
@@ -22,7 +23,18 @@ export function ManagerConfirmation({
         {CONFIRMATION_FIELDS.map((field) => (
           <div key={field.key} style={{ marginBottom: 16 }}>
             <label htmlFor={`confirm-${field.key}`}>{field.label}</label>
-            {field.options ? (
+            {field.key === 'reportTo' ? (
+              <DirectoryPersonPicker
+                id="confirm-reportTo"
+                label="汇报对象"
+                dept={req.dept}
+                requisitionId={req.id}
+                value={form.fields.reportToId ? [form.fields.reportToId] : []}
+                legacyName={form.fields.reportTo}
+                disabled={form.locked}
+                onChange={(ids, name) => form.changeReporting(ids[0] ?? '', name)}
+              />
+            ) : field.options ? (
               <select
                 id={`confirm-${field.key}`}
                 style={{ width: '100%', padding: 8 }}

@@ -80,6 +80,7 @@ PostgreSQL 验证：设置 `DATABASE_URL` 和 `TEST_DATABASE_URL` 为同一个�
 
 ## 本批边界
 
+- 需求表单部门树、汇报对象及保密可见人员已接入本地组织目录，两端确认支持稳定人员 ID、搜索分页、失效值提示；服务端在写入 / 提交时校验在职和部门范围。兼容旧姓名字段，但重名须重选。无需新迁移，详见 `docs/adr/0007-requisition-form-directory.md`；本地有效授权范围不等于真实飞书任职关系。
 - 审批通过已持久化 `requisition.approved` 事件，尚未消费生成岗位；B04 建设岗位与事件消费。
 - 年度编制维护和终审原子预占/加签已交付，HRBP / 编制负责人可使用 HR Web `/settings/headcount`。部署升级后先录入真实编制；迁移不推断预算、不追溯补扣既有审批通过需求。
 - 职级薪资维护与独立 HRD 加签已交付，招聘负责人 / 薪酬负责人使用 `/settings/salary`；支持版本、生效日期与历史。薪资缺行阻止提交，月薪 / 年薪越界加签 HRD。本机开发库已升级 `0003`。真实环境需录入薪资行和部门策略 `hrd_id`；演示账号 `salary_hrd` 负责审批，`payroll` 负责维护。详见 `docs/adr/0003-salary-bands.md`。

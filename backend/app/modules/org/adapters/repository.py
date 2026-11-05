@@ -32,6 +32,9 @@ class SqlDirectory:
         self.session = session
         self._hierarchy = None
 
+    def departments(self):
+        return list(self.session.execute(select(DepartmentRecord.id, DepartmentRecord.parent_id)))
+
     def get_user(self, user_id):
         record = self.session.get(UserRecord, user_id, populate_existing=True)
         if record and record.active:

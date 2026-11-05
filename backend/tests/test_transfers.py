@@ -358,6 +358,13 @@ def test_inherited_request_resubmission_routes_around_custodian(client, login, f
         headers=login("director"),
         json={"expected_version": withdrawn["version"]},
     )
+    # Resubmission must explicitly remove the departed optional visibility recipient.
+    assert submitted.status_code == 422
+    submitted = client.post(
+        f"{ROOT}/{req['id']}/submit",
+        headers=login("director", "resubmit-clean-visibility"),
+        json={"expected_version": withdrawn["version"], "fields": {"visibleTo": ""}},
+    )
     assert submitted.status_code == 200, submitted.text
     req = submitted.json()
     assert req["chain"][1]["approver_id"] == "hrd"

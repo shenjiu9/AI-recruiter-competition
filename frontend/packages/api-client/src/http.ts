@@ -14,6 +14,14 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  formDepartments: (id) => ({
+    method: 'GET',
+    path: `/hr/requisition-form/departments${id ? `?requisition_id=${enc(id)}` : ''}`,
+  }),
+  formUsers: (dept, q, page, selected, id) => ({
+    method: 'GET',
+    path: `/hr/requisition-form/users?dept=${enc(dept)}&q=${enc(q)}&page=${page}&size=20${selected.map((uid) => `&selected=${enc(uid)}`).join('')}${id ? `&requisition_id=${enc(id)}` : ''}`,
+  }),
   transferCandidates: (id, q, page) => ({
     method: 'GET',
     path: `/hr/requisitions/${enc(id)}/transfer-candidates?q=${enc(q)}&page=${page}&size=20`,

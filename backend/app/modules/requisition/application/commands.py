@@ -1,14 +1,13 @@
 from dataclasses import asdict
 
 from app.kernel.types import Clock, Ctx, DomainError, Journal, new_id
+from app.modules.requisition.application.form_directory import HR_ROLES, WRITE_ROLES, FormDirectory
 from app.modules.requisition.application.transfers import TransferCommands
 from app.modules.requisition.domain.model import Requisition
 from app.modules.requisition.domain.rules import precheck_fields, salary_range
 from app.modules.requisition.domain.state import transition
 from app.modules.requisition.ports import Organization, Repository
 
-HR_ROLES = {"recruiter", "recruiting_lead", "hrbp"}
-WRITE_ROLES = HR_ROLES | {"hiring_manager"}
 CONFIRM_FIELDS = {
     "recruitType",
     "employmentType",
@@ -19,6 +18,7 @@ CONFIRM_FIELDS = {
     "level",
     "city",
     "reportTo",
+    "reportToId",
     "expectedOnboard",
     "salary",
     "reason",
@@ -32,7 +32,7 @@ CONFIRM_FIELDS = {
 }
 
 
-class RequisitionCommands(TransferCommands):
+class RequisitionCommands(FormDirectory, TransferCommands):
     def __init__(
         self, repo: Repository, org: Organization, clock: Clock, journal: Journal, transfers
     ):
@@ -90,11 +90,6 @@ class RequisitionCommands(TransferCommands):
             raise DomainError("VALIDATION_ERROR", "表单字段过多或内容过长", 400)
         return {k: v.strip() for k, v in fields.items()}
 
-    def _visible_users(self, fields):
-        for user_id in fields.get("visibleTo", "").split(","):
-            if user_id.strip():
-                self.org.get_user(user_id.strip())
-
     def _salary_check(self, fields):
         return self.org.salary_check(
             fields.get("series", ""),
@@ -103,7 +98,7 @@ class RequisitionCommands(TransferCommands):
             salary_range(fields.get("salary", "")),
         )
 
-    def precheck_fields(self, ctx, fields, salary_result=None, manager_id=None):
+    def precheck_fields(self, ctx, fields, salary_result=None, *, reporting=True, visibility=True):
         fields = self._validate_fields(fields)
         if not fields.get("dept"):
             return [
@@ -117,8 +112,8 @@ class RequisitionCommands(TransferCommands):
             fields,
             today,
             budget["available"] if active and not budget["frozen"] else 0,
-            self._identity_name(manager_id or policy.manager_id),
         )
+        checks.extend(self._people_checks(fields, reporting, visibility))
         checks.extend((salary_result or self._salary_check(fields))["checks"])
         if fields.get("employmentType") == "正式":
             checks.append(
@@ -191,8 +186,9 @@ class RequisitionCommands(TransferCommands):
             and ctx.principal.user_id != policy.manager_id
         ):
             raise DomainError("FORBIDDEN", "只能为自己负责的部门发起需求", 403)
-        self._visible_users(fields)
         fields["dept"] = dept
+        fields = self._normalize_reporting(fields)
+        self._visible_users(fields)
         req = Requisition(
             new_id("REQ"),
             1,
@@ -217,9 +213,13 @@ class RequisitionCommands(TransferCommands):
         if req.status not in {"draft", "rejected", "withdrawn"}:
             raise DomainError("INVALID_TRANSITION", "只能编辑草稿、已驳回或已撤回的需求", 409)
         old = self._snapshot(req)
-        fields = self._validate_fields({**req.fields, **patch})
+        fields = self._normalize_reporting(self._validate_fields({**req.fields, **patch}), patch)
         policy = self._dept(ctx, fields["dept"])
         self._visible_users(fields)
+        if policy.id != req.dept and policy.id not in {
+            d["id"] for d in self.form_departments(ctx, req_id)
+        }:
+            raise DomainError("OUT_OF_SCOPE", "该部门不在可选范围内", 403)
         req.fields, req.dept, req.manager_id = fields, policy.id, policy.manager_id
         req.mode = "self" if req.creator_id == policy.manager_id else "proxy"
         return self._save(ctx, req, old, "requisition.draft_updated", False)
@@ -229,6 +229,7 @@ class RequisitionCommands(TransferCommands):
         self._owner(ctx, req)
         self._version(req, expected_version)
         next_state = transition(req.status, "submit")
+        req.fields = self._normalize_reporting(req.fields)
         salary_result = self._salary_check(req.fields)
         checks = self.precheck_fields(ctx, req.fields, salary_result)
         blocked = [c for c in checks if c["status"] == "block"]
@@ -303,6 +304,11 @@ class RequisitionCommands(TransferCommands):
             raise DomainError("FORBIDDEN", "只有当前归属用人经理可以修改确认", 403)
         self.org.check_approver(ctx.principal.user_id, req.dept, "manager")
         fields = self._validate_fields({**req.fields, **patch})
+        reporting_changed = any(
+            fields.get(k, "") != req.fields.get(k, "") for k in ("reportTo", "reportToId")
+        )
+        if reporting_changed:
+            fields = self._normalize_reporting(fields, patch)
         changes = {
             k: {"before": req.fields.get(k, ""), "after": v}
             for k, v in fields.items()
@@ -319,7 +325,11 @@ class RequisitionCommands(TransferCommands):
         salary_changed = bool(set(changes) & {"salary", "series", "level", "city"})
         salary = self._salary_check(fields) if salary_changed else req.salary_review
         # Unedited confirmations preserve the submitted decision. Final HC is always rechecked.
-        checks = self.precheck_fields(ctx, fields, salary, req.manager_id) if changes else []
+        checks = (
+            self.precheck_fields(ctx, fields, salary, reporting=reporting_changed, visibility=False)
+            if changes
+            else []
+        )
         chain = req.chain
         if set(changes) & {"salary", "series", "level", "city", "hcRequest"}:
             proposed = self._confirmation_chain(req, fields, salary, preserve_existing=True)

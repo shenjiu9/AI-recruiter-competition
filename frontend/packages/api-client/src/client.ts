@@ -206,6 +206,18 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  formDepartments(requisitionId?: string): Promise<{ id: string; parent_id: string | null }[]>;
+  formUsers(
+    dept: string,
+    query: string,
+    page: number,
+    selected: string[],
+    requisitionId?: string,
+  ): Promise<{
+    items: { id: string; name: string }[];
+    total: number;
+    selected: { id: string; name: string | null; available: boolean }[];
+  }>;
   transferCandidates(
     id: string,
     query: string,

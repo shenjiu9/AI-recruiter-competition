@@ -32,9 +32,7 @@ def salary_range(text: str) -> tuple[float, float, int] | None:
     return (low, high, months) if 0 < low <= high <= 1000 and 1 <= months <= 24 else None
 
 
-def precheck_fields(
-    fields: dict[str, str], today: date, available_hc: int, manager_name: str
-) -> list[dict]:
+def precheck_fields(fields: dict[str, str], today: date, available_hc: int) -> list[dict]:
     checks = []
 
     def add(key, label, ok, detail, warning=False):
@@ -85,12 +83,6 @@ def precheck_fields(
     except ValueError:
         valid_date = False
     add("onboard", "到岗日期", valid_date, "填写 YYYY-MM-DD，且至少晚于今天 7 天")
-    add(
-        "manager",
-        "汇报对象",
-        fields.get("reportTo") == manager_name,
-        f"当前部门已配置负责人：{manager_name}",
-    )
     for key, limit in {"title": 30, "reason": 500, "duties": 2000, "requirements": 2000}.items():
         add(
             f"length_{key}",
@@ -132,6 +124,6 @@ def precheck_fields(
             "visibility",
             "保密可见人员",
             bool(fields.get("visibleTo", "").strip()),
-            "填写可见人员的用户 ID，以逗号分隔；审批链自动包含",
+            "请选择可见人员；发起人、归属经理、交接负责人及审批链自动包含",
         )
     return checks

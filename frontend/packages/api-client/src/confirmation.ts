@@ -22,7 +22,9 @@ export const CONFIRMATION_FIELDS: { key: string; label: string; options?: string
   { key: 'requirements', label: '任职资格' },
 ];
 export const confirmationFieldLabel = (key: string) =>
-  CONFIRMATION_FIELDS.find((field) => field.key === key)?.label ?? key;
+  key === 'reportToId'
+    ? '汇报对象账号'
+    : (CONFIRMATION_FIELDS.find((field) => field.key === key)?.label ?? key);
 
 /** Pin the original version while editing; a refresh must never silently rebase edits. */
 export function useConfirmation(initial: RequisitionDetail, onSuccess: () => void) {
@@ -99,6 +101,8 @@ export function useConfirmation(initial: RequisitionDetail, onSuccess: () => voi
       (retry || (!!preview && !preview.checks.some((c) => c.status === 'block'))),
     retry,
     submit,
+    changeReporting: (id: string, name: string) =>
+      setFields((old) => ({ ...old, reportToId: id, reportTo: name })),
     change: (name: string, value: string) => setFields((old) => ({ ...old, [name]: value })),
   };
 }

@@ -11,7 +11,17 @@ async function login(page: Page, user: string, base = 'http://127.0.0.1:5183') {
 }
 
 async function select(page: Page, id: string, text: string) {
+  if (id === '#f-reportTo') {
+    await page
+      .locator(id)
+      .selectOption({ label: `${text}（${text === '何美玲' ? 'manager' : 'analyst'}）` });
+    return;
+  }
   await page.locator(id).click();
+  if (id === '#f-dept') {
+    await page.locator('.ant-select-tree-title').getByText(text, { exact: true }).click();
+    return;
+  }
   await page.locator('.ant-select-item-option-content').getByText(text, { exact: true }).click();
 }
 

@@ -8,6 +8,7 @@ from app.modules.org.salary import SalaryService
 
 
 class Directory(Protocol):
+    def departments(self): ...
     def identity(self, user_id): ...
     def user_ids(self, query): ...
     def get_user(self, user_id: str) -> UserDTO | None: ...
@@ -32,6 +33,18 @@ class OrgFacade(HeadcountService):
 
     def identity(self, user_id):
         return self.directory.identity(user_id)
+
+    def form_departments(self):
+        return self.directory.departments()
+
+    def form_users(self, dept, query=""):
+        # Effective directory/manual scope is the current local source of association.
+        # This is not an employee employment-department relationship.
+        return [
+            user
+            for user_id in self.directory.user_ids(query)
+            if (user := self.directory.get_user(user_id)) and dept in user.departments
+        ]
 
     def lock_configuration(self):
         self.configuration.store.lock()
