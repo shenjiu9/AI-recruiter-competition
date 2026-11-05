@@ -84,7 +84,8 @@ PostgreSQL 验证：设置 `DATABASE_URL` 和 `TEST_DATABASE_URL` 为同一个�
 - 年度编制维护和终审原子预占/加签已交付，HRBP / 编制负责人可使用 HR Web `/settings/headcount`。部署升级后先录入真实编制；迁移不推断预算、不追溯补扣既有审批通过需求。
 - 职级薪资维护与独立 HRD 加签已交付，招聘负责人 / 薪酬负责人使用 `/settings/salary`；支持版本、生效日期与历史。薪资缺行阻止提交，月薪 / 年薪越界加签 HRD。本机开发库已升级 `0003`。真实环境需录入薪资行和部门策略 `hrd_id`；演示账号 `salary_hrd` 负责审批，`payroll` 负责维护。详见 `docs/adr/0003-salary-bands.md`。
 - 组织权限与审批人配置页 `/settings/organization` 已交付：开发账号 `admin` 维护，招聘负责人只读授权范围；支持版本历史、恢复为新版本和审批试算。迁移 `0004` 分离目录派生角色与人工授权，真实部署首位管理员使用 `python -m app.bootstrap_admin`，详见 `docs/adr/0005-organization-permissions.md`。
-- 正式飞书 SSO/通讯录同步、离职转交、催办和草稿自动保存尚未交付。编制当前仅支持年度；待审批投影、季度/结转、Excel 导入及岗位关闭释放/入职转已用后续完成，详见 `docs/adr/0002-headcount-reservation.md`。
+- 人工审批转交、离职 / 调岗内部事件接续及负责人交接已交付，两端支持转交和站内消息；迁移至 `0005`。内部重放命令 `python -m app.process_directory_change --file verified-directory-event.json` 要求先核验并导入目录版本，不提供修改在职状态的业务接口。详见 `docs/adr/0006-approval-transfers.md`。
+- 正式飞书 SSO/通讯录同步与事件验签、飞书通知、催办和草稿自动保存尚未交付。编制当前仅支持年度；待审批投影、季度/结转、Excel 导入及岗位关闭释放/入职转已用后续完成，详见 `docs/adr/0002-headcount-reservation.md`。
 - 预检仅有确定性基础规则；替补/追加关系、相似需求识别和 AI 复核尚未接入；不能当作完整 PRD 验收通过。
 - Dify 未配置时 AI 填表返回 `503 AI_DEGRADED`，不会生成伪造的 AI 结果。
 - 候选人、岗位、面试、AI 工作台等其他真实接口还未实现；默认 mock 模式可以继续浏览原前端演示。

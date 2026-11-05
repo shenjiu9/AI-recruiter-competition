@@ -46,6 +46,29 @@ class SqlDirectory:
             )
         return None
 
+    def identity(self, user_id):
+        record = self.session.get(UserRecord, user_id, populate_existing=True)
+        return (
+            {
+                "id": record.id,
+                "name": record.name,
+                "active": record.active,
+                "version": record.version,
+            }
+            if record
+            else None
+        )
+
+    def user_ids(self, query):
+        # Search is restricted to eligible candidates by the requisition service.
+        return [
+            r.id
+            for r in self.session.scalars(
+                select(UserRecord).where(UserRecord.active.is_(True)).order_by(UserRecord.id)
+            )
+            if query.casefold() in (r.id + " " + r.name).casefold()
+        ]
+
     def expand_scope(self, roots):
         # Exact identifiers, never string-prefix authorization. Visited nodes also bound bad source cycles.
         scope = set(roots)

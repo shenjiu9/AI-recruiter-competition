@@ -8,6 +8,8 @@ from app.modules.org.salary import SalaryService
 
 
 class Directory(Protocol):
+    def identity(self, user_id): ...
+    def user_ids(self, query): ...
     def get_user(self, user_id: str) -> UserDTO | None: ...
     def policy(self, dept_id: str) -> DepartmentPolicy | None: ...
     def expand_scope(self, roots): ...
@@ -27,6 +29,21 @@ class OrgFacade(HeadcountService):
                 "ORG_APPROVER_INVALID", "审批人缺少该部门范围或所需角色，请管理员检查配置", 422
             )
         return user
+
+    def identity(self, user_id):
+        return self.directory.identity(user_id)
+
+    def lock_configuration(self):
+        self.configuration.store.lock()
+
+    def transfer_candidates(self, dept, node_id, query):
+        users = []
+        for user_id in self.directory.user_ids(query):
+            try:
+                users.append(self.check_approver(user_id, dept, node_id))
+            except DomainError:
+                continue
+        return users
 
     def salary_check(self, series, level, city, quote):
         return self.salary.check(series, level, city, quote)
@@ -70,20 +87,34 @@ class OrgFacade(HeadcountService):
             nodes.append(("hc", "编制负责人加签", policy.hc_owner_id))
         if facts.get("salary_over"):
             hrd = self.directory.get_user(policy.hrd_id) if policy.hrd_id else None
-            if not hrd or "hrd" not in hrd.roles:
+            if (not hrd or "hrd" not in hrd.roles) and "salary" not in facts.get(
+                "retained_nodes", {}
+            ):
                 raise DomainError(
                     "REQ_HRD_UNAVAILABLE", "薪资超带宽，但部门未配置有效 HRD，请联系管理员"
                 )
             nodes.append(("salary", "HRD 薪资加签", policy.hrd_id))
         chain = []
         for key, name, user_id in nodes:
-            if key == "salary" and user_id in {facts["actor_id"], policy.manager_id}:
+            if key in facts.get("retained_nodes", {}):
+                chain.append(ApprovalNode(**facts["retained_nodes"][key]))
+                continue
+            if key == "salary" and user_id in {
+                facts["actor_id"],
+                policy.manager_id,
+                facts.get("owner_id"),
+            }:
                 raise DomainError(
                     "REQ_APPROVER_UNAVAILABLE",
                     "HRD 不能审批本人发起或本人归属的招聘需求，请配置其他审批人",
                 )
-            if user_id == facts["actor_id"]:
-                if key == "salary" or user_id == policy.hc_owner_id:
+            if user_id == facts["actor_id"] or (
+                key != "manager" and user_id == facts.get("owner_id")
+            ):
+                if key == "salary" or policy.hc_owner_id in {
+                    facts["actor_id"],
+                    facts.get("owner_id"),
+                }:
                     raise DomainError(
                         "REQ_APPROVER_UNAVAILABLE", "审批人与发起人相同，请配置上级审批人"
                     )

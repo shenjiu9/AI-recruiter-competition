@@ -21,3 +21,4 @@ class Requisition:
     approval_policy: dict | None = None
     salary_review: dict | None = None
     submitted_fields: dict | None = None
+    owner_id: str | None = None

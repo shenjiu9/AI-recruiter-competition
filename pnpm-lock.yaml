@@ -59,6 +59,9 @@ importers:
       '@recruiter/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
+      '@recruiter/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
       '@tanstack/react-query':
         specifier: ^5.62.11
         version: 5.106.1(@types/react@18.3.31)(react@18.3.1)

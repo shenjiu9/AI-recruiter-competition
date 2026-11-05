@@ -35,6 +35,7 @@ class RequisitionDetail(RequisitionDTO):
     currentNode: int
     creatorId: str
     managerId: str
+    ownerId: str
 
 
 class RequisitionPage(BaseModel):
@@ -81,6 +82,19 @@ class ApprovalCommand(VersionCommand):
 class RejectionCommand(VersionCommand):
     node_id: str
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class TransferCommand(RejectionCommand):
+    target_id: str = Field(min_length=1, max_length=64)
+
+
+class DirectoryChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_id: str = Field(min_length=1, max_length=64)
+    user_id: str = Field(min_length=1, max_length=64)
+    source_version: int = Field(ge=1)
+    kind: Literal["left", "moved"]
+    supervisor_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class RequisitionApproved(BaseModel):

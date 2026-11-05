@@ -1,6 +1,7 @@
 from dataclasses import asdict
 
 from app.kernel.types import Clock, Ctx, DomainError, Journal, new_id
+from app.modules.requisition.application.transfers import TransferCommands
 from app.modules.requisition.domain.model import Requisition
 from app.modules.requisition.domain.rules import precheck_fields, salary_range
 from app.modules.requisition.domain.state import transition
@@ -31,9 +32,12 @@ CONFIRM_FIELDS = {
 }
 
 
-class RequisitionCommands:
-    def __init__(self, repo: Repository, org: Organization, clock: Clock, journal: Journal):
+class RequisitionCommands(TransferCommands):
+    def __init__(
+        self, repo: Repository, org: Organization, clock: Clock, journal: Journal, transfers
+    ):
         self.repo, self.org, self.clock, self.journal = repo, org, clock, journal
+        self.transfers = transfers
 
     def _dept(self, ctx, dept):
         if not WRITE_ROLES.intersection(ctx.principal.roles):
@@ -54,6 +58,7 @@ class RequisitionCommands:
         }.intersection(p.roles):
             return False
         actors = {req.creator_id, req.manager_id, *(n["approver_id"] for n in req.chain)}
+        actors.add(req.owner_id)
         actors.update(x.strip() for x in req.fields.get("visibleTo", "").split(",") if x.strip())
         return p.user_id in actors or (
             req.fields.get("confidential") != "1"
@@ -77,7 +82,7 @@ class RequisitionCommands:
             )
 
     def _owner(self, ctx, req):
-        if ctx.principal.user_id not in {req.creator_id, req.manager_id}:
+        if ctx.principal.user_id not in {req.owner_id or req.creator_id, req.manager_id}:
             raise DomainError("FORBIDDEN", "只有发起人或用人经理可以修改此需求", 403)
 
     def _validate_fields(self, fields):
@@ -112,7 +117,7 @@ class RequisitionCommands:
             fields,
             today,
             budget["available"] if active and not budget["frozen"] else 0,
-            self.org.get_user(manager_id or policy.manager_id).name,
+            self._identity_name(manager_id or policy.manager_id),
         )
         checks.extend((salary_result or self._salary_check(fields))["checks"])
         if fields.get("employmentType") == "正式":
@@ -271,7 +276,7 @@ class RequisitionCommands:
         req.submitted_fields = dict(req.fields)
         return self._save(ctx, req, old, "requisition.submitted")
 
-    def _confirmation_chain(self, req, fields, salary_result):
+    def _confirmation_chain(self, req, fields, salary_result, preserve_existing=False):
         return [
             asdict(n)
             for n in self.org.resolve_approval_chain(
@@ -280,8 +285,10 @@ class RequisitionCommands:
                 {
                     "proxy": req.mode == "proxy",
                     "actor_id": req.creator_id,
+                    "owner_id": req.owner_id,
                     "hc_request": fields.get("hcRequest", "0") not in {"", "0"},
                     "salary_over": salary_result["over"],
+                    "retained_nodes": {n["id"]: n for n in req.chain} if preserve_existing else {},
                 },
                 req.approval_policy,
             )
@@ -315,7 +322,7 @@ class RequisitionCommands:
         checks = self.precheck_fields(ctx, fields, salary, req.manager_id) if changes else []
         chain = req.chain
         if set(changes) & {"salary", "series", "level", "city", "hcRequest"}:
-            proposed = self._confirmation_chain(req, fields, salary)
+            proposed = self._confirmation_chain(req, fields, salary, preserve_existing=True)
             existing = {n["id"]: n for n in req.chain}
             chain = [existing.get(n["id"], n) for n in proposed]
         return {
@@ -354,6 +361,7 @@ class RequisitionCommands:
                 "salary_rules": preview["salary_rules"],
             }
         )
+        self.reconcile_current(ctx, req)
         return self._save(ctx, req, old, "requisition.manager_confirmed")
 
     def decide(self, ctx, req_id, node_id, expected_version, *, approve, comment):
@@ -365,6 +373,10 @@ class RequisitionCommands:
         node = req.chain[req.current_node]
         if node["id"] != node_id or node["approver_id"] != ctx.principal.user_id:
             raise DomainError("FORBIDDEN", "只有当前节点审批人可以处理", 403)
+        if req.owner_id == ctx.principal.user_id:
+            raise DomainError(
+                "REQ_OWNER_SELF_APPROVAL", "交接负责人不能自审，请撤回后重新提交审批", 409
+            )
         self.org.check_approver(
             ctx.principal.user_id,
             req.dept,
@@ -417,6 +429,7 @@ class RequisitionCommands:
                     )
         else:
             req.status = next_state
+        self.reconcile_current(ctx, req)
         action = (
             "requisition.approved"
             if req.status == "approved"
@@ -439,6 +452,10 @@ class RequisitionCommands:
         )
         return self._save(ctx, req, old, "requisition.withdrawn")
 
+    def _identity_name(self, user_id):
+        identity = self.org.identity(user_id)
+        return identity["name"] if identity else user_id
+
     def dto(self, req, detail=False):
         node = req.chain[req.current_node] if req.status == "in_approval" else None
         result = {
@@ -454,9 +471,9 @@ class RequisitionCommands:
             if req.fields.get("headcount", "").isascii()
             and req.fields.get("headcount", "").isdigit()
             else 0,
-            "initiator": self.org.get_user(req.manager_id).name,
+            "initiator": self._identity_name(req.manager_id),
             "mode": req.mode,
-            "proxyBy": self.org.get_user(req.creator_id).name if req.mode == "proxy" else None,
+            "proxyBy": self._identity_name(req.creator_id) if req.mode == "proxy" else None,
             "status": req.status,
             "waitingFor": node["approver"] if node else None,
             "waitingDays": max(0, (self.clock.now() - req.submitted_at).days) if node else 0,
@@ -470,5 +487,6 @@ class RequisitionCommands:
                 currentNode=req.current_node,
                 creatorId=req.creator_id,
                 managerId=req.manager_id,
+                ownerId=req.owner_id or req.creator_id,
             )
         return result

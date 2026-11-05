@@ -4,8 +4,15 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts", "./styles.css": "./src/styles.css" },
-  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./approval-transfer": "./src/ApprovalTransfer.tsx",
+    "./requisition-notices": "./src/RequisitionNotices.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@recruiter/api-client": "workspace:*",
@@ -13,6 +20,16 @@
     "@recruiter/i18n": "workspace:*",
     "antd": "^5.23.0"
   },
-  "peerDependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" },
-  "devDependencies": { "@types/react": "^18.3.18", "@types/react-dom": "^18.3.5", "react": "^18.3.1", "react-dom": "^18.3.1", "typescript": "^5.7.2", "vite": "^6.0.5" }
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
 }

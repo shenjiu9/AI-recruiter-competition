@@ -15,11 +15,43 @@ from app.modules.requisition.contracts import (
     RequisitionDetail,
     RequisitionPage,
     SubmitCommand,
+    TransferCommand,
     VersionCommand,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["requisitions"])
 Context = Annotated[Ctx, Depends(context)]
+
+
+@router.get("/hr/requisition-notifications")
+def notifications(request: Request, ctx: Context):
+    with request.app.state.container.scope() as services:
+        return services.requisition.notifications(ctx)
+
+
+@router.get("/hr/requisitions/{req_id}/transfer-candidates")
+def transfer_candidates(
+    request: Request,
+    ctx: Context,
+    req_id: str,
+    q: str = Query("", max_length=100),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+):
+    with request.app.state.container.scope() as services:
+        return services.requisition.transfer_candidates(ctx, req_id, q, page, size)
+
+
+@router.post("/hr/requisitions/{req_id}/transfer", response_model=RequisitionDetail)
+def transfer(request: Request, ctx: Context, req_id: str, command: TransferCommand):
+    with request.app.state.container.scope() as services:
+        return write(
+            request,
+            ctx,
+            services,
+            command.model_dump(),
+            lambda: services.requisition.transfer(ctx, req_id, command),
+        )
 
 
 @router.get("/hr/requisitions", response_model=RequisitionPage)

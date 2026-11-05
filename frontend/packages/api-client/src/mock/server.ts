@@ -67,6 +67,9 @@ export function createMockClient(): ApiClient {
       };
     },
     getRequisition: backendOnly,
+    transferCandidates: backendOnly,
+    transferRequisition: backendOnly,
+    requisitionNotifications: async () => [],
     createRequisitionDraft: backendOnly,
     updateRequisitionDraft: backendOnly,
     submitRequisitionDraft: backendOnly,

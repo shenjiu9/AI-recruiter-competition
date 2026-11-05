@@ -21,6 +21,7 @@ class SqlRepository:
             "approval_policy": req.approval_policy,
             "salary_review": req.salary_review,
             "submitted_fields": req.submitted_fields,
+            "owner_id": req.owner_id,
             "current_node": req.current_node,
             "submitted_at": req.submitted_at.isoformat() if req.submitted_at else None,
         }
@@ -54,12 +55,24 @@ class SqlRepository:
     def _access(self, req):
         self.session.execute(delete(AccessRecord).where(AccessRecord.requisition_id == req.id))
         users = {req.creator_id, req.manager_id, *(n["approver_id"] for n in req.chain)}
+        if req.owner_id:
+            users.add(req.owner_id)
         users.update(x.strip() for x in req.fields.get("visibleTo", "").split(",") if x.strip())
         self.session.add_all(AccessRecord(requisition_id=req.id, user_id=u) for u in users)
 
     def get(self, req_id):
         record = self.session.get(RequisitionRecord, req_id)
         return self._entity(record) if record else None
+
+    def open_requests(self):
+        return [
+            self._entity(r)
+            for r in self.session.scalars(
+                select(RequisitionRecord)
+                .where(RequisitionRecord.status.in_(["draft", "in_approval"]))
+                .order_by(RequisitionRecord.id)
+            )
+        ]
 
     def add(self, req):
         self.session.add(RequisitionRecord(id=req.id, **self._values(req)))

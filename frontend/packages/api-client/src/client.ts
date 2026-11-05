@@ -99,12 +99,17 @@ export interface RequisitionDetail extends Requisition {
   currentNode: number;
   creatorId: string;
   managerId: string;
+  ownerId: string;
   history: {
     action: string;
     actor_id: string;
     at: string;
     comment?: string;
     node_id?: string;
+    from_id?: string;
+    to_id?: string;
+    from_name?: string;
+    to_name?: string;
     changes?: Record<string, { before: string; after: string }>;
   }[];
 }
@@ -201,6 +206,34 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  transferCandidates(
+    id: string,
+    query: string,
+    page: number,
+  ): Promise<{
+    items: { id: string; name: string }[];
+    total: number;
+    version: number;
+  }>;
+  transferRequisition(
+    id: string,
+    body: {
+      expected_version: number;
+      node_id: string;
+      target_id: string;
+      reason: string;
+    },
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
+  requisitionNotifications(): Promise<
+    {
+      id: string;
+      requisition_id: string;
+      action: string;
+      at: string;
+      title: string;
+    }[]
+  >;
   organizationDepartments(): Promise<OrganizationDepartment[]>;
   organizationUsers(
     page: number,

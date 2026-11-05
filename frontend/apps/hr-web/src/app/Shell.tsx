@@ -16,7 +16,7 @@ import { useApi } from '@recruiter/api-client';
 import { useSession } from '@recruiter/auth';
 import { qk } from '@recruiter/domain';
 import { Can } from '@recruiter/permissions';
-import { DegradeBanner } from '@recruiter/ui-kit';
+import { DegradeBanner, RequisitionNotices } from '@recruiter/ui-kit';
 
 const { Header, Sider, Content } = Layout;
 
@@ -145,6 +145,7 @@ export function Shell() {
           )}
         </Sider>
         <Content id="main" style={{ padding: 24, minWidth: 0 }}>
+          <RequisitionNotices onOpen={(id) => nav(`/requisitions/${id}`)} />
           <Outlet />
         </Content>
       </Layout>

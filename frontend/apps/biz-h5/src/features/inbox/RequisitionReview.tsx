@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi, confirmationFieldLabel } from '@recruiter/api-client';
 import { useSession } from '@recruiter/auth';
+import { ApprovalTransfer } from '@recruiter/ui-kit/approval-transfer';
+import { TRANSFER_ACTIONS } from '@recruiter/ui-kit/requisition-notices';
 import { ManagerConfirmation } from './ManagerConfirmation';
 import { qk } from '@recruiter/domain';
 import { useWrite } from '../../shared/useWrite';
@@ -16,6 +18,7 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
     queryFn: () => api.getRequisition(id),
   });
   const [reason, setReason] = useState('');
+  const [transferring, setTransferring] = useState(false);
   const reject = useWrite(
     async (text: string, opts) => {
       const req = detail.data;
@@ -25,6 +28,8 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
     { invalidate: [qk.biz.inbox(), ['biz', 'requisition', id]], success: '已驳回' },
   );
   const req = detail.data;
+  const approver =
+    req?.status === 'in_approval' && req.chain[req.currentNode]?.approver_id === session?.userId;
   return (
     <section style={{ padding: 24 }}>
       <Button onClick={onClose}>关闭详情</Button>
@@ -46,6 +51,20 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
           <p>岗位职责：{req.fields.duties}</p>
           <p>任职资格：{req.fields.requirements}</p>
           {req.history
+            .filter((item) => item.action in TRANSFER_ACTIONS)
+            .map((item, index) => (
+              <div key={`transfer-${index}`}>
+                <h3>{TRANSFER_ACTIONS[item.action]}</h3>
+                <p>
+                  {item.from_name ?? item.from_id}{' '}
+                  {item.to_id ? `→ ${item.to_name ?? item.to_id}` : ''}
+                </p>
+                <p>
+                  {item.comment} · {new Date(item.at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          {req.history
             .filter((item) => item.action === 'manager_confirmed')
             .map((item, index) => (
               <div key={index}>
@@ -57,7 +76,8 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
                 ))}
               </div>
             ))}
-          {req.status === 'in_approval' &&
+          {!transferring &&
+            req.status === 'in_approval' &&
             req.chain[req.currentNode]?.id === 'manager' &&
             req.chain[req.currentNode]?.approver_id === session?.userId && (
               <ManagerConfirmation
@@ -69,22 +89,43 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
                 }}
               />
             )}
-          <label htmlFor="biz-reject-reason">驳回原因（必填）</label>
-          <TextArea
-            id="biz-reject-reason"
-            value={reason}
-            onChange={setReason}
-            maxLength={1000}
-            placeholder="说明需要调整的内容"
-          />
-          <Button
-            block
-            color="danger"
-            disabled={!reason.trim() || reject.isPending}
-            onClick={() => reject.mutate(reason, { onSuccess: onClose })}
-          >
-            确认驳回
-          </Button>
+          {approver && (
+            <>
+              <Button block onClick={() => setTransferring(!transferring)}>
+                {transferring ? '收起转交' : '转交审批'}
+              </Button>
+              {transferring && (
+                <ApprovalTransfer
+                  req={req}
+                  onSuccess={() => {
+                    void qc.invalidateQueries({ queryKey: qk.biz.inbox() });
+                    void qc.invalidateQueries({ queryKey: ['biz', 'requisition', id] });
+                    onClose();
+                  }}
+                />
+              )}
+              {!transferring && (
+                <>
+                  <label htmlFor="biz-reject-reason">驳回原因（必填）</label>
+                  <TextArea
+                    id="biz-reject-reason"
+                    value={reason}
+                    onChange={setReason}
+                    maxLength={1000}
+                    placeholder="说明需要调整的内容"
+                  />
+                  <Button
+                    block
+                    color="danger"
+                    disabled={!reason.trim() || reject.isPending}
+                    onClick={() => reject.mutate(reason, { onSuccess: onClose })}
+                  >
+                    确认驳回
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </>
       )}
     </section>

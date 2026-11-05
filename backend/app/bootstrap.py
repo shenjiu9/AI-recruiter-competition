@@ -8,6 +8,7 @@ from app.modules.org.adapters.repository import SqlDirectory
 from app.modules.org.adapters.salary import SqlSalary
 from app.modules.org.public import OrgFacade
 from app.modules.requisition.adapters.repository import SqlRepository
+from app.modules.requisition.adapters.transfers import SqlTransfers
 from app.modules.requisition.public import RequisitionFacade
 from app.platform.auth import Auth
 from app.platform.crypto import Crypto
@@ -42,6 +43,7 @@ class Container:
                     org,
                     self.clock,
                     SqlJournal(session, self.clock),
+                    SqlTransfers(session),
                 ),
                 idempotency=Idempotency(session, self.clock, self.crypto),
             )

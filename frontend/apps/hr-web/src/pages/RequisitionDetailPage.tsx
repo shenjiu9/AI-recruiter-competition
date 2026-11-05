@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useSession } from '@recruiter/auth';
 import { confirmationFieldLabel } from '@recruiter/api-client';
+import { ApprovalTransfer, TRANSFER_ACTIONS } from '@recruiter/ui-kit';
 import { ManagerConfirmation } from '../features/requisition/ui/ManagerConfirmation';
 import { REQ_STATUS_LABEL } from '@recruiter/domain';
 import { useRequisitionAction, useRequisitionDetail } from '../features/requisition';
@@ -18,10 +19,11 @@ export function RequisitionDetailPage() {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [transferring, setTransferring] = useState(false);
   if (query.isPending) return <Spin />;
   if (!query.data) return <Alert type="error" message={query.error?.message ?? '需求不存在'} />;
   const req = query.data;
-  const owner = session?.userId === req.creatorId || session?.userId === req.managerId;
+  const owner = session?.userId === req.ownerId || session?.userId === req.managerId;
   const approver =
     req.status === 'in_approval' && req.chain[req.currentNode]?.approver_id === session?.userId;
   return (
@@ -47,6 +49,7 @@ export function RequisitionDetailPage() {
             )}
             {approver && (
               <>
+                <Button onClick={() => setTransferring(true)}>转交审批</Button>
                 <Button
                   type="primary"
                   loading={action.isPending}
@@ -112,6 +115,11 @@ export function RequisitionDetailPage() {
             <div>
               {ACTIONS[item.action] ?? item.action} · {new Date(item.at).toLocaleString()}
               {item.comment ? ` · ${item.comment}` : ''}
+              {item.to_id && (
+                <p>
+                  {item.from_name ?? item.from_id} → {item.to_name ?? item.to_id}
+                </p>
+              )}
               {Object.entries(item.changes ?? {}).map(([key, value]) => (
                 <p key={key}>
                   {confirmationFieldLabel(key)}：{value.before || '空'} → {value.after || '空'}
@@ -121,6 +129,24 @@ export function RequisitionDetailPage() {
           ),
         }))}
       />
+      <Modal
+        title="转交审批"
+        open={transferring}
+        footer={null}
+        destroyOnClose
+        onCancel={() => {
+          setTransferring(false);
+          void query.refetch();
+        }}
+      >
+        <ApprovalTransfer
+          req={req}
+          onSuccess={() => {
+            setTransferring(false);
+            void qc.invalidateQueries({ queryKey: ['requisition'] });
+          }}
+        />
+      </Modal>
       <Modal
         title="用人经理确认"
         open={confirming}
@@ -172,6 +198,7 @@ export function RequisitionDetailPage() {
 }
 
 const ACTIONS: Record<string, string> = {
+  ...TRANSFER_ACTIONS,
   submitted: '提交审批',
   approved: '节点通过',
   rejected: '驳回',
