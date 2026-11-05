@@ -16,6 +16,8 @@ export type Role =
   | 'hiring_manager'
   | 'hrbp'
   | 'headcount_owner'
+  | 'hrd'
+  | 'compensation_owner'
   | 'interviewer'
   | 'admin'
   | 'candidate';
@@ -208,6 +210,9 @@ export function SessionGate({
               <option value="director">部门负责人</option>
               <option value="hrbp">人力伙伴 · HRBP</option>
               <option value="hrd">编制负责人</option>
+              <option value="salary_hrd">薪酬审批负责人 · HRD</option>
+              <option value="payroll">薪酬维护负责人</option>
+              <option value="analyst">田野 · 经营分析 / 财务</option>
               <option value="sales">周振华 · 销售部</option>
             </select>
           </label>

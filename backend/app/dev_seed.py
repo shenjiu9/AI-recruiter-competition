@@ -3,6 +3,8 @@
 from app.bootstrap import build_container
 from app.modules.org.adapters.headcount import HeadcountRecord
 from app.modules.org.adapters.repository import DepartmentRecord, UserRecord
+from app.modules.org.adapters.salary import SqlSalary
+from app.modules.org.contracts import SalaryBandCommand
 from app.platform.settings import Settings
 
 DEPARTMENTS = ["客服中心", "销售部 / 华南大区", "经营分析部", "财务部"]
@@ -14,6 +16,8 @@ USERS = [
     ("director", "部门负责人", ["hiring_manager"], DEPARTMENTS),
     ("hrbp", "人力伙伴", ["hrbp"], DEPARTMENTS),
     ("hrd", "编制负责人", ["hrbp"], DEPARTMENTS),
+    ("salary_hrd", "薪酬审批负责人", ["hrd"], DEPARTMENTS),
+    ("payroll", "薪酬维护负责人", ["compensation_owner"], DEPARTMENTS),
     ("outsider", "其他部门用户", ["recruiter"], ["其他部门"]),
 ]
 
@@ -54,8 +58,29 @@ def seed(container):
                             "hrbp_id": "hrbp",
                             "hc_owner_id": "hrd",
                             "salary_max": 20,
+                            "hrd_id": "salary_hrd",
                         },
                     )
+                )
+            else:
+                record = session.get(DepartmentRecord, dept)
+                if not record.policy.get("hrd_id"):
+                    record.policy = {**record.policy, "hrd_id": "salary_hrd"}
+        salary = SqlSalary(session, container.crypto)
+        for series in ["客服", "财务", "销售", "经营分析"]:
+            if not salary.find(series, "P3", "深圳", today):
+                salary.save(
+                    SalaryBandCommand(
+                        series=series,
+                        grade="P3",
+                        city="深圳",
+                        lower=5,
+                        upper=20,
+                        months=13,
+                        effective_from=today,
+                        expected_version=0,
+                    ),
+                    today,
                 )
 
 

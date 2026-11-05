@@ -3,6 +3,7 @@ from typing import Protocol
 from app.kernel.types import DomainError
 from app.modules.org.contracts import ApprovalNode, DepartmentPolicy, UserDTO
 from app.modules.org.headcount import HeadcountService
+from app.modules.org.salary import SalaryService
 
 
 class Directory(Protocol):
@@ -11,9 +12,22 @@ class Directory(Protocol):
 
 
 class OrgFacade(HeadcountService):
-    def __init__(self, directory: Directory, headcount, clock, journal):
+    def __init__(self, directory: Directory, headcount, salary, clock, journal):
         super().__init__(headcount, clock, journal)
         self.directory = directory
+        self.salary = SalaryService(salary, clock, journal)
+
+    def salary_check(self, series, level, city, quote):
+        return self.salary.check(series, level, city, quote)
+
+    def salary_list(self, ctx, page, size):
+        return self.salary.list(ctx, page, size)
+
+    def salary_history(self, ctx, band_id):
+        return self.salary.history(ctx, band_id)
+
+    def save_salary(self, ctx, command):
+        return self.salary.save(ctx, command)
 
     def get_user(self, user_id: str) -> UserDTO:
         user = self.directory.get_user(user_id)
@@ -39,12 +53,19 @@ class OrgFacade(HeadcountService):
                 ("hrbp", "HRBP 审批", policy.hrbp_id),
             ]
         )
-        if facts.get("hc_request") or facts.get("salary_over"):
-            nodes.append(("hc", "编制/薪酬加签", policy.hc_owner_id))
+        if facts.get("hc_request"):
+            nodes.append(("hc", "编制负责人加签", policy.hc_owner_id))
+        if facts.get("salary_over"):
+            hrd = self.directory.get_user(policy.hrd_id) if policy.hrd_id else None
+            if not hrd or "hrd" not in hrd.roles:
+                raise DomainError(
+                    "REQ_HRD_UNAVAILABLE", "薪资超带宽，但部门未配置有效 HRD，请联系管理员"
+                )
+            nodes.append(("salary", "HRD 薪资加签", policy.hrd_id))
         chain = []
         for key, name, user_id in nodes:
             if user_id == facts["actor_id"]:
-                if user_id == policy.hc_owner_id:
+                if key == "salary" or user_id == policy.hc_owner_id:
                     raise DomainError(
                         "REQ_APPROVER_UNAVAILABLE", "审批人与发起人相同，请配置上级审批人"
                     )

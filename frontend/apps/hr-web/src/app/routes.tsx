@@ -13,6 +13,7 @@ import { InterviewsPage } from '../pages/InterviewsPage';
 import { AutomationSettingsPage } from '../pages/AutomationSettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
+import { SalarySettingsPage } from '../pages/SalarySettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: 'insights', element: <PlaceholderPage title="数据洞察" phase="第二期" /> },
       { path: 'settings/automation', element: <AutomationSettingsPage /> },
       { path: 'settings/headcount', element: <HeadcountSettingsPage /> },
+      { path: 'settings/salary', element: <SalarySettingsPage /> },
       { path: '*', element: <PlaceholderPage title="页面不存在" /> },
     ],
   },

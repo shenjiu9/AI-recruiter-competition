@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from app.kernel.types import SystemClock
 from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
+from app.modules.org.adapters.salary import SqlSalary
 from app.modules.org.public import OrgFacade
 from app.modules.requisition.adapters.repository import SqlRepository
 from app.modules.requisition.public import RequisitionFacade
@@ -27,6 +28,7 @@ class Container:
             org = OrgFacade(
                 SqlDirectory(session),
                 SqlHeadcount(session),
+                SqlSalary(session, self.crypto),
                 self.clock,
                 SqlJournal(session, self.clock),
             )

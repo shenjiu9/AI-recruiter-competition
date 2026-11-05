@@ -154,7 +154,10 @@ def test_precheck_enforced_server_side(client, login, fields, patch):
 
 def test_headcount_request_and_salary_add_signoff(client, login, fields):
     req = create(client, login, {**fields, "headcount": "3", "hcRequest": "1", "salary": "20-25K"})
-    assert req["chain"][-1]["approver_id"] == "hrd"
+    assert [(n["id"], n["approver_id"]) for n in req["chain"][-2:]] == [
+        ("hc", "hrd"),
+        ("salary", "salary_hrd"),
+    ]
     req = create(client, login, fields, user="manager", key="self")
     assert req["mode"] == "self" and req["chain"][0]["approver_id"] == "director"
 

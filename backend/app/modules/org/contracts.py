@@ -1,7 +1,30 @@
 from dataclasses import dataclass
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class SalaryBandCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    series: str = Field(min_length=1, max_length=80)
+    grade: str = Field(min_length=1, max_length=40, pattern=r"^[^\s–~至,-]+$")
+    city: str = Field(min_length=1, max_length=80)
+    lower: float = Field(gt=0, le=1000, allow_inf_nan=False)
+    upper: float = Field(gt=0, le=1000, allow_inf_nan=False)
+    months: int = Field(ge=1, le=24)
+    effective_from: date
+    expected_version: int = Field(ge=0)
+
+    @field_validator("grade", mode="before")
+    @classmethod
+    def normalize_grade(cls, value):
+        return value.strip().upper() if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def validate_band(self):
+        if self.lower > self.upper:
+            raise ValueError("薪资上限不能小于下限")
+        return self
 
 
 class HeadcountCommand(BaseModel):
@@ -37,6 +60,7 @@ class DepartmentPolicy:
     hrbp_id: str
     hc_owner_id: str
     salary_max: float
+    hrd_id: str | None = None
 
 
 @dataclass(frozen=True)

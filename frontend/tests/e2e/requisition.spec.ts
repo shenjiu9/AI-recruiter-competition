@@ -162,3 +162,89 @@ test('编制维护联调：终审不足加签，补足后才能审批并预占',
     animations: 'disabled',
   });
 });
+
+test('薪资表联调：缺配置拦截、维护版本、超带宽独立 HRD 审批', async ({ page, browser }) => {
+  const series = `薪资联调${Date.now()}`;
+  const title = `薪资审批${Date.now()}`;
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await login(page, 'hr');
+  await page.goto('/requisitions/new');
+  await select(page, '#f-dept', '经营分析部');
+  await page.getByText('新增', { exact: true }).click();
+  await page.locator('#f-headcount').fill('2');
+  await page.locator('#f-title').fill(title);
+  await page.locator('#f-series').fill(series);
+  await page.locator('#f-level').fill('P3');
+  await page.locator('#f-city').fill('深圳');
+  await select(page, '#f-reportTo', '田野');
+  await page
+    .locator('#f-expectedOnboard')
+    .fill(new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10));
+  await page.locator('#f-salary').fill('8-12K/月×13');
+  await page.locator('#f-reason').fill('扩大分析团队');
+  await page.locator('#f-duties').fill('分析经营数据');
+  await page.locator('#f-requirements').fill('数据分析能力');
+  await expect(page.getByText(new RegExp(`职级薪资表缺少已生效的 ${series}`))).toBeVisible();
+  await expect(page.getByRole('button', { name: '提交审批', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '保存草稿并返回' }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  const detailUrl = page.url();
+
+  await page.getByRole('menuitem', { name: /职级薪资表/ }).click();
+  await page.getByRole('button', { name: '新增薪资配置', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('职位序列', { exact: true }).fill(series);
+  await dialog.getByLabel('单个职级', { exact: true }).fill('P3');
+  await dialog.getByLabel('城市', { exact: true }).fill('深圳');
+  await dialog.getByLabel('月薪下限（K）', { exact: true }).fill('8');
+  await dialog.getByLabel('月薪上限（K）', { exact: true }).fill('10');
+  await dialog.getByRole('button', { name: '保存薪资版本' }).click();
+  await expect(dialog).toHaveCount(0);
+  const row = page.getByRole('row').filter({ hasText: series });
+  await expect(row.getByRole('cell').nth(3)).toContainText('8–10K/月 × 13');
+
+  await page.goto(detailUrl);
+  await page.getByRole('button', { name: '编辑需求' }).click();
+  await expect(page.getByText('HRD 薪资加签', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '提交审批', exact: true }).click();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(page.getByText('HRD 薪资加签', { exact: true })).toBeVisible();
+
+  await page.getByRole('menuitem', { name: /职级薪资表/ }).click();
+  await row.getByRole('button', { name: '发布新版本' }).click();
+  await dialog.getByLabel('月薪上限（K）', { exact: true }).fill('20');
+  await dialog.getByRole('button', { name: '保存薪资版本' }).click();
+  await expect(dialog).toHaveCount(0);
+  await row.getByRole('button', { name: '版本历史' }).click();
+  await expect(dialog.getByRole('cell', { name: '8–10K/月 × 13', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('cell', { name: '8–20K/月 × 13', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: 'test-results/salary-history.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+
+  const bizContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const biz = await bizContext.newPage();
+  biz.on('pageerror', (e) => errors.push(e.message));
+  for (const actor of ['analyst', 'director', 'hrbp']) {
+    await login(biz, actor, 'http://127.0.0.1:5184');
+    const card = biz.locator('article').filter({ hasText: title });
+    await card.getByRole('button', { name: '通过', exact: true }).click();
+    await expect(card).toHaveCount(0);
+  }
+  await page.goto(detailUrl);
+  await expect(page.getByText('需求审批已通过', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/审批中/)).toBeVisible();
+  await login(biz, 'salary_hrd', 'http://127.0.0.1:5184');
+  const hrdCard = biz.locator('article').filter({ hasText: title });
+  await expect(hrdCard).toContainText('HRD 薪资加签');
+  await hrdCard.getByRole('button', { name: '通过', exact: true }).click();
+  await expect(hrdCard).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText('需求审批已通过', { exact: true })).toBeVisible();
+  await bizContext.close();
+  expect(errors).toEqual([]);
+});

@@ -125,6 +125,15 @@ export function Shell() {
               onClick={(e) => nav(e.key)}
             />
           )}
+          {session?.roles.some(
+            (role) => role === 'recruiting_lead' || role === 'compensation_owner',
+          ) && (
+            <Menu
+              selectedKeys={[loc.pathname]}
+              items={[{ key: '/settings/salary', icon: <SettingOutlined />, label: '职级薪资表' }]}
+              onClick={(e) => nav(e.key)}
+            />
+          )}
         </Sider>
         <Content id="main" style={{ padding: 24, minWidth: 0 }}>
           <Outlet />

@@ -20,7 +20,7 @@ REQUIRED = {
 }
 
 
-def salary_range(text: str) -> tuple[float, float] | None:
+def salary_range(text: str) -> tuple[float, float, int] | None:
     match = re.fullmatch(
         r"\s*(\d+(?:\.\d+)?)\s*[-–~至]\s*(\d+(?:\.\d+)?)\s*(?:[kK](?:/月)?)?\s*(?:[×x*]\s*(\d{1,2})(?:薪|个月|月)?)?\s*",
         text,
@@ -29,11 +29,11 @@ def salary_range(text: str) -> tuple[float, float] | None:
         return None
     low, high = float(match[1]), float(match[2])
     months = int(match[3] or 12)
-    return (low, high) if 0 < low <= high <= 1000 and 1 <= months <= 24 else None
+    return (low, high, months) if 0 < low <= high <= 1000 and 1 <= months <= 24 else None
 
 
 def precheck_fields(
-    fields: dict[str, str], today: date, available_hc: int, salary_max: float, manager_name: str
+    fields: dict[str, str], today: date, available_hc: int, manager_name: str
 ) -> list[dict]:
     checks = []
 
@@ -78,14 +78,6 @@ def precheck_fields(
     )
     salary = salary_range(fields.get("salary", ""))
     add("salary", "薪资格式", salary is not None, "填写下限–上限 K/月，例如 8-12K/月×13")
-    if salary:
-        add(
-            "salary_band",
-            "薪资带宽",
-            salary[1] <= salary_max,
-            f"当前配置上限 {salary_max:g}K/月，超出将增加审批节点",
-            warning=True,
-        )
     try:
         valid_date = date.fromisoformat(fields.get("expectedOnboard", "")) >= today + timedelta(
             days=7

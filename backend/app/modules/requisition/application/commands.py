@@ -60,7 +60,15 @@ class RequisitionCommands:
             if user_id.strip():
                 self.org.get_user(user_id.strip())
 
-    def precheck_fields(self, ctx, fields):
+    def _salary_check(self, fields):
+        return self.org.salary_check(
+            fields.get("series", ""),
+            fields.get("level", ""),
+            fields.get("city", ""),
+            salary_range(fields.get("salary", "")),
+        )
+
+    def precheck_fields(self, ctx, fields, salary_result=None):
         fields = self._validate_fields(fields)
         if not fields.get("dept"):
             return [
@@ -74,9 +82,9 @@ class RequisitionCommands:
             fields,
             today,
             budget["available"] if active and not budget["frozen"] else 0,
-            policy.salary_max,
             self.org.get_user(policy.manager_id).name,
         )
+        checks.extend((salary_result or self._salary_check(fields))["checks"])
         if fields.get("employmentType") == "正式":
             checks.append(
                 {
@@ -108,11 +116,11 @@ class RequisitionCommands:
                 )
         return checks
 
-    def approval_chain(self, ctx, fields):
+    def approval_chain(self, ctx, fields, salary_result=None):
         if not fields.get("dept"):
             return []
         policy = self._dept(ctx, fields["dept"])
-        salary = salary_range(fields.get("salary", ""))
+        salary_result = salary_result or self._salary_check(fields)
         return [
             asdict(n)
             for n in self.org.resolve_approval_chain(
@@ -122,7 +130,7 @@ class RequisitionCommands:
                     "proxy": ctx.principal.user_id != policy.manager_id,
                     "actor_id": ctx.principal.user_id,
                     "hc_request": fields.get("hcRequest", "0") not in {"", "0"},
-                    "salary_over": bool(salary and salary[1] > policy.salary_max),
+                    "salary_over": salary_result["over"],
                 },
             )
         ]
@@ -186,14 +194,15 @@ class RequisitionCommands:
         self._owner(ctx, req)
         self._version(req, expected_version)
         next_state = transition(req.status, "submit")
-        checks = self.precheck_fields(ctx, req.fields)
+        salary_result = self._salary_check(req.fields)
+        checks = self.precheck_fields(ctx, req.fields, salary_result)
         blocked = [c for c in checks if c["status"] == "block"]
         if blocked:
             raise DomainError(
                 "REQ_PENDING_DECISIONS", "预检未通过，请处理后再提交", details={"checks": blocked}
             )
         old = self._snapshot(req)
-        req.chain = self.approval_chain(ctx, req.fields)
+        req.chain = self.approval_chain(ctx, req.fields, salary_result)
         # Snapshot the exceptional final approver, too: later directory policy changes
         # must not silently redirect an in-flight request to a different approver.
         policy = self.org.policy(req.dept)
@@ -214,6 +223,7 @@ class RequisitionCommands:
                 "actor_id": ctx.principal.user_id,
                 "at": self.clock.now().isoformat(),
                 "chain": req.chain,
+                "salary_rules": salary_result["refs"],
             }
         )
         return self._save(ctx, req, old, "requisition.submitted")

@@ -90,6 +90,37 @@ export interface HeadcountCommand {
   effective_from: string;
 }
 
+export interface SalaryRevision {
+  version: number;
+  lower: number;
+  upper: number;
+  months: number;
+  effective_from: string;
+  updated_on: string;
+}
+
+export interface SalaryBand {
+  id: string;
+  series: string;
+  grade: string;
+  city: string;
+  version: number;
+  latest: SalaryRevision;
+  active: SalaryRevision | null;
+  stale: boolean;
+}
+
+export interface SalaryBandCommand {
+  series: string;
+  grade: string;
+  city: string;
+  lower: number;
+  upper: number;
+  months: number;
+  effective_from: string;
+  expected_version: number;
+}
+
 export interface CandidateBrief {
   applicationId: string;
   name: string;
@@ -113,6 +144,12 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  salaryBands(
+    page: number,
+    size: number,
+  ): Promise<{ items: SalaryBand[]; total: number; page: number; size: number }>;
+  salaryHistory(id: string): Promise<SalaryRevision[]>;
+  saveSalaryBand(command: SalaryBandCommand, opts: WriteOpts): Promise<SalaryBand>;
   headcountPlans(year: number): Promise<{ departments: string[]; items: HeadcountPlan[] }>;
   saveHeadcount(dept: string, command: HeadcountCommand, opts: WriteOpts): Promise<HeadcountPlan>;
   // 工作台

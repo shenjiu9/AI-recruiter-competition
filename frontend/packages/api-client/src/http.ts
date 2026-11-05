@@ -14,6 +14,12 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  salaryBands: (page, size) => ({
+    method: 'GET',
+    path: `/admin/salary-bands?page=${page}&size=${size}`,
+  }),
+  salaryHistory: (id) => ({ method: 'GET', path: `/admin/salary-bands/${enc(id)}/history` }),
+  saveSalaryBand: (body, opts) => ({ method: 'POST', path: '/admin/salary-bands', body, opts }),
   headcountPlans: (year) => ({ method: 'GET', path: `/admin/headcount?year=${year}` }),
   saveHeadcount: (dept, body, opts) => ({
     method: 'POST',
