@@ -2,6 +2,7 @@ from typing import Protocol
 
 from app.kernel.types import DomainError
 from app.modules.org.contracts import ApprovalNode, DepartmentPolicy, UserDTO
+from app.modules.org.headcount import HeadcountService
 
 
 class Directory(Protocol):
@@ -9,8 +10,9 @@ class Directory(Protocol):
     def policy(self, dept_id: str) -> DepartmentPolicy | None: ...
 
 
-class OrgFacade:
-    def __init__(self, directory: Directory):
+class OrgFacade(HeadcountService):
+    def __init__(self, directory: Directory, headcount, clock, journal):
+        super().__init__(headcount, clock, journal)
         self.directory = directory
 
     def get_user(self, user_id: str) -> UserDTO:

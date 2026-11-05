@@ -67,13 +67,46 @@ class RequisitionCommands:
                 {"key": "dept", "label": "需求部门", "status": "block", "detail": "请先选择部门"}
             ]
         policy = self._dept(ctx, fields["dept"])
-        return precheck_fields(
+        budget = self.org.headcount(policy.id)
+        today = self.clock.now().date()
+        active = budget is not None and budget["effective_from"] <= today
+        checks = precheck_fields(
             fields,
-            self.clock.now().date(),
-            policy.available_hc,
+            today,
+            budget["available"] if active and not budget["frozen"] else 0,
             policy.salary_max,
             self.org.get_user(policy.manager_id).name,
         )
+        if fields.get("employmentType") == "正式":
+            checks.append(
+                {
+                    "key": "hc_plan",
+                    "label": "年度编制表",
+                    "status": "pass" if active else "block",
+                    "detail": "年度编制已生效"
+                    if active
+                    else "缺少本年度已生效编制，请联系 HRBP 或编制负责人维护",
+                }
+            )
+            if active and budget["frozen"]:
+                checks.append(
+                    {
+                        "key": "hc_frozen",
+                        "label": "编制冻结",
+                        "status": "block",
+                        "detail": "编制已冻结，请联系维护人解冻后提交",
+                    }
+                )
+            if active and (today - budget["updated_on"]).days > 30:
+                checks.append(
+                    {
+                        "key": "hc_stale",
+                        "label": "编制更新时间",
+                        "status": "warn",
+                        "detail": "编制数据超过 30 天未维护，可能过期",
+                    }
+                )
+        return checks
 
     def approval_chain(self, ctx, fields):
         if not fields.get("dept"):
@@ -161,6 +194,17 @@ class RequisitionCommands:
             )
         old = self._snapshot(req)
         req.chain = self.approval_chain(ctx, req.fields)
+        # Snapshot the exceptional final approver, too: later directory policy changes
+        # must not silently redirect an in-flight request to a different approver.
+        policy = self.org.policy(req.dept)
+        hc_user = self.org.get_user(policy.hc_owner_id)
+        req.hc_approver = {
+            "id": "hc_final",
+            "name": "终审编制复核",
+            "approver_id": hc_user.id,
+            "approver": hc_user.name,
+            "note": "请先确认编制已补足且未冻结，再通过审批",
+        }
         req.current_node = 0
         req.submitted_at = self.clock.now()
         req.status = next_state
@@ -196,7 +240,36 @@ class RequisitionCommands:
         if approve:
             req.current_node += 1
             if req.current_node == len(req.chain):
-                req.status = next_state
+                if req.fields.get("employmentType") != "正式" or self.org.reserve_headcount(
+                    ctx, req.dept, req.id, int(req.fields["headcount"])
+                ):
+                    req.status = next_state
+                elif node_id == "hc_final":
+                    raise DomainError(
+                        "HC_UNAVAILABLE", "编制不足、冻结或尚未生效，请先维护编制，再重新审批", 409
+                    )
+                else:
+                    if req.hc_approver is None:
+                        raise DomainError(
+                            "HC_RESUBMIT_REQUIRED",
+                            "旧版需求缺少编制复核人快照，请撤回后重新提交",
+                            409,
+                        )
+                    if req.hc_approver["approver_id"] in {req.creator_id, req.manager_id}:
+                        raise DomainError(
+                            "REQ_APPROVER_UNAVAILABLE",
+                            "编制复核人不能自审，请配置其他负责人并重新提交",
+                            409,
+                        )
+                    req.chain.append(dict(req.hc_approver))
+                    req.history.append(
+                        {
+                            "action": "hc_review_added",
+                            "actor_id": ctx.principal.user_id,
+                            "at": self.clock.now().isoformat(),
+                            "comment": "终审编制不足、冻结或未生效，已加签编制负责人；尚未预占名额",
+                        }
+                    )
         else:
             req.status = next_state
         action = (

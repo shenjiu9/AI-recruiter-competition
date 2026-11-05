@@ -12,6 +12,7 @@ import { RequisitionEditPage } from '../pages/RequisitionEditPage';
 import { InterviewsPage } from '../pages/InterviewsPage';
 import { AutomationSettingsPage } from '../pages/AutomationSettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: 'channels', element: <PlaceholderPage title="渠道" phase="第二期" /> },
       { path: 'insights', element: <PlaceholderPage title="数据洞察" phase="第二期" /> },
       { path: 'settings/automation', element: <AutomationSettingsPage /> },
+      { path: 'settings/headcount', element: <HeadcountSettingsPage /> },
       { path: '*', element: <PlaceholderPage title="页面不存在" /> },
     ],
   },

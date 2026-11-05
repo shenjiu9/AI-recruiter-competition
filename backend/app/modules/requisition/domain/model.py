@@ -17,3 +17,4 @@ class Requisition:
     history: list[dict] = field(default_factory=list)
     current_node: int = 0
     submitted_at: datetime | None = None
+    hc_approver: dict | None = None

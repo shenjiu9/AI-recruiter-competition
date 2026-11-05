@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException
 
 from app.interfaces.api.auth import router as auth_router
+from app.interfaces.api.org import router as org_router
 from app.interfaces.api.requisition import router as req_router
 from app.kernel.types import DomainError
 
@@ -92,5 +93,6 @@ def create_api(container):
         return {"status": "ok"}
 
     app.include_router(auth_router)
+    app.include_router(org_router)
     app.include_router(req_router)
     return app

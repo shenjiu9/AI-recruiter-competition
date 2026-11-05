@@ -15,6 +15,7 @@ export type Role =
   | 'recruiter'
   | 'hiring_manager'
   | 'hrbp'
+  | 'headcount_owner'
   | 'interviewer'
   | 'admin'
   | 'candidate';

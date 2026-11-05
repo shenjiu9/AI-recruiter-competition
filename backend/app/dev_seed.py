@@ -1,6 +1,7 @@
 """Explicit local-only directory fixture; never runs at API startup."""
 
 from app.bootstrap import build_container
+from app.modules.org.adapters.headcount import HeadcountRecord
 from app.modules.org.adapters.repository import DepartmentRecord, UserRecord
 from app.platform.settings import Settings
 
@@ -27,6 +28,21 @@ def seed(container):
         for dept, manager in zip(
             DEPARTMENTS, ["manager", "sales", "analyst", "analyst"], strict=True
         ):
+            today = container.clock.now().date()
+            if session.get(HeadcountRecord, (dept, today.year)) is None:
+                session.add(
+                    HeadcountRecord(
+                        dept=dept,
+                        year=today.year,
+                        version=1,
+                        planned=2,
+                        used=0,
+                        reserved=0,
+                        frozen=False,
+                        effective_from=today.replace(month=1, day=1),
+                        updated_on=today,
+                    )
+                )
             if session.get(DepartmentRecord, dept) is None:
                 session.add(
                     DepartmentRecord(

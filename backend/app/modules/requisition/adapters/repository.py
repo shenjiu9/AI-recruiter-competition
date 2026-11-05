@@ -17,6 +17,7 @@ class SqlRepository:
             "mode": req.mode,
             "chain": req.chain,
             "history": req.history,
+            "hc_approver": req.hc_approver,
             "current_node": req.current_node,
             "submitted_at": req.submitted_at.isoformat() if req.submitted_at else None,
         }
@@ -65,6 +66,7 @@ class SqlRepository:
     def save(self, req, expected_version):
         result = self.session.execute(
             update(RequisitionRecord)
+            .execution_options(autoflush=False)
             .where(
                 RequisitionRecord.id == req.id,
                 RequisitionRecord.version == expected_version,

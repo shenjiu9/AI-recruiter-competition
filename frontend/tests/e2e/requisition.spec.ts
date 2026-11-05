@@ -87,3 +87,74 @@ test('AI 未配置时明确降级，手工内容保留', async ({ page }) => {
   await expect(page.getByText('AI 填表尚未配置，请手工填写；已填写的内容不会丢失')).toBeVisible();
   await expect(page.locator('#f-title')).toHaveValue('手工保留的职位');
 });
+
+test('编制维护联调：终审不足加签，补足后才能审批并预占', async ({ page, request }) => {
+  const api = 'http://127.0.0.1:8010/api/v1';
+  const headers = async (user: string) => {
+    const response = await request.post(`${api}/auth/dev-login`, {
+      data: { user_id: user, password: 'e2e-only-password' },
+    });
+    expect(response.ok()).toBeTruthy();
+    return {
+      Authorization: `Bearer ${(await response.json()).token}`,
+      'Idempotency-Key': crypto.randomUUID(),
+    };
+  };
+  const response = await request.post(`${api}/hr/requisitions`, {
+    headers: await headers('hr'),
+    data: {
+      recruitType: '社招',
+      dept: '财务部',
+      employmentType: '正式',
+      reqType: '新增',
+      headcount: '2',
+      title: '编制复核联调',
+      series: '财务',
+      level: 'P3',
+      city: '深圳',
+      reportTo: '田野',
+      expectedOnboard: new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10),
+      salary: '8-12K/月×13',
+      reason: '业务扩展',
+      duties: '财务分析',
+      requirements: '财务知识',
+    },
+  });
+  expect(response.status()).toBe(201);
+  let req = await response.json();
+  for (const user of ['analyst', 'director']) {
+    const approved = await request.post(`${api}/hr/requisitions/${req.id}/approve`, {
+      headers: await headers(user),
+      data: { node_id: req.chain[req.currentNode].id, expected_version: req.version },
+    });
+    expect(approved.ok()).toBeTruthy();
+    req = await approved.json();
+  }
+  await login(page, 'hrbp');
+  await page.getByText('编制管理', { exact: true }).click();
+  const row = page.getByRole('row').filter({ hasText: '财务部' });
+  await row.getByRole('button', { name: '维护编制', exact: true }).click();
+  await page.getByLabel('计划编制', { exact: true }).fill('0');
+  await page.getByRole('button', { name: '保存编制' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto(`/requisitions/${req.id}`);
+  await page.getByRole('button', { name: '通过审批', exact: true }).click();
+  await expect(page.getByText('终审编制复核中', { exact: true })).toBeVisible();
+  await login(page, 'hrd');
+  await page.goto(`/requisitions/${req.id}`);
+  await page.getByRole('button', { name: '通过审批', exact: true }).click();
+  await expect(page.getByText(/编制不足、冻结或尚未生效，请先维护编制/)).toBeVisible();
+  await page.getByText('编制管理', { exact: true }).click();
+  await row.getByRole('button', { name: '维护编制', exact: true }).click();
+  await page.getByLabel('计划编制', { exact: true }).fill('2');
+  await page.getByRole('button', { name: '保存编制' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto(`/requisitions/${req.id}`);
+  await page.getByRole('button', { name: '通过审批', exact: true }).click();
+  await expect(page.getByText('需求审批已通过', { exact: true })).toBeVisible();
+  await page.getByText('编制管理', { exact: true }).click();
+  await expect(row.getByRole('cell').nth(3)).toHaveText('2');
+  await expect(row.getByRole('cell').nth(4)).toHaveText('0');
+  await expect(page.getByRole('button', { name: '新增年度编制' })).toBeEnabled();
+  await page.screenshot({ path: 'test-results/headcount-management.png', fullPage: true });
+});

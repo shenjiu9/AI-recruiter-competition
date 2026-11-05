@@ -28,6 +28,12 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
       {req && (
         <>
           <h2>{req.title}</h2>
+          {req.chain[req.currentNode]?.id === 'hc_final' && (
+            <p role="alert">
+              终审编制不足、冻结或未生效，尚未预占名额。请在 HR Web
+              的编制管理中补足并解冻，再通过审批。
+            </p>
+          )}
           <p>
             {req.dept} · {req.headcount} 人
           </p>

@@ -65,12 +65,24 @@ export function RequisitionDetailPage() {
           description="岗位尚未生成，请在岗位创建完成后继续招聘。"
         />
       )}
+      {req.status === 'in_approval' && req.chain[req.currentNode]?.id === 'hc_final' && (
+        <Alert
+          style={{ marginBottom: 20 }}
+          type="warning"
+          showIcon
+          message="终审编制复核中"
+          description="名额不足、冻结或未生效，尚未预占招聘名额。请编制负责人维护编制后，再通过此节点。"
+        />
+      )}
       {!!req.chain.length && (
         <Steps
           style={{ marginBottom: 24 }}
           current={req.currentNode}
           status={req.status === 'rejected' ? 'error' : 'process'}
-          items={req.chain.map((node) => ({ title: node.name, description: node.approver }))}
+          items={req.chain.map((node) => ({
+            title: node.name,
+            description: `${node.approver}${node.note ? ` · ${node.note}` : ''}`,
+          }))}
         />
       )}
       <Descriptions
@@ -128,6 +140,7 @@ const ACTIONS: Record<string, string> = {
   approved: '节点通过',
   rejected: '驳回',
   withdrawn: '撤回',
+  hc_review_added: '加签编制负责人',
 };
 const FIELD_LABELS: Record<string, string> = {
   title: '职位名称',

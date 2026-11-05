@@ -14,6 +14,13 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  headcountPlans: (year) => ({ method: 'GET', path: `/admin/headcount?year=${year}` }),
+  saveHeadcount: (dept, body, opts) => ({
+    method: 'POST',
+    path: `/admin/headcount?dept=${enc(dept)}`,
+    body,
+    opts,
+  }),
   workbenchSummary: () => ({ method: 'GET', path: '/hr/workbench' }),
   listOpenCards: () => ({ method: 'GET', path: '/hr/cards?state=open' }),
   resolveCard: (id, body, opts) => ({

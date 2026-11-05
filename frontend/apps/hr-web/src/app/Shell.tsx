@@ -118,6 +118,13 @@ export function Shell() {
               style={{ borderInlineEnd: 0 }}
             />
           </Can>
+          {session?.roles.some((role) => role === 'hrbp' || role === 'headcount_owner') && (
+            <Menu
+              selectedKeys={[loc.pathname]}
+              items={[{ key: '/settings/headcount', icon: <SettingOutlined />, label: '编制管理' }]}
+              onClick={(e) => nav(e.key)}
+            />
+          )}
         </Sider>
         <Content id="main" style={{ padding: 24, minWidth: 0 }}>
           <Outlet />

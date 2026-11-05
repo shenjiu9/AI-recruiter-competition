@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 from app.kernel.types import SystemClock
+from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
 from app.modules.org.public import OrgFacade
 from app.modules.requisition.adapters.repository import SqlRepository
@@ -23,7 +24,12 @@ class Container:
     @contextmanager
     def scope(self):
         with self.db.sessions.begin() as session:
-            org = OrgFacade(SqlDirectory(session))
+            org = OrgFacade(
+                SqlDirectory(session),
+                SqlHeadcount(session),
+                self.clock,
+                SqlJournal(session, self.clock),
+            )
             yield SimpleNamespace(
                 org=org,
                 auth=Auth(self.settings, self.clock, org),

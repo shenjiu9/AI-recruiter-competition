@@ -67,6 +67,29 @@ export interface RequisitionPage {
   size: number;
 }
 
+export interface HeadcountPlan {
+  dept: string;
+  year: number;
+  version: number;
+  planned: number;
+  used: number;
+  reserved: number;
+  available: number;
+  frozen: boolean;
+  effective_from: string;
+  updated_on: string;
+  stale: boolean;
+}
+
+export interface HeadcountCommand {
+  year: number;
+  expected_version: number;
+  planned: number;
+  used: number;
+  frozen: boolean;
+  effective_from: string;
+}
+
 export interface CandidateBrief {
   applicationId: string;
   name: string;
@@ -90,6 +113,8 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  headcountPlans(year: number): Promise<{ departments: string[]; items: HeadcountPlan[] }>;
+  saveHeadcount(dept: string, command: HeadcountCommand, opts: WriteOpts): Promise<HeadcountPlan>;
   // 工作台
   workbenchSummary(): Promise<WorkbenchSummary>;
   listOpenCards(): Promise<DecisionCard[]>;

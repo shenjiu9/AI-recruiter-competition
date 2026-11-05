@@ -39,7 +39,7 @@ def test_manual_request_approval_chain_and_event_journal(client, login, fields, 
         events = list(db.scalars(select(EventRecord).order_by(EventRecord.occurred_at)))
         assert events[-1].type == "requisition.approved"
         assert all(set(e.payload) == {"requisition_id", "version"} for e in events)
-        assert db.scalar(select(func.count()).select_from(AuditRecord)) == 5
+        assert db.scalar(select(func.count()).select_from(AuditRecord)) == 6
         encrypted = db.get(RequisitionRecord, req["id"]).data
         assert b"8-12" not in encrypted
         assert db.scalar(select(RequestRecord)).response is not None
