@@ -1,0 +1,7 @@
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sr-only:focus { position: fixed; left: 16px; top: 8px; width: auto; height: auto; clip: auto; z-index: 100; padding: 8px 12px; background: var(--rc-surface); border-radius: 4px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--rc-ink-3); }
+.panel { background: var(--rc-surface); border: 1px solid var(--rc-line); border-radius: 8px; }
+.panel-h { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--rc-line); font-weight: 500; }
+.panel-b { padding: 4px 16px 8px; }

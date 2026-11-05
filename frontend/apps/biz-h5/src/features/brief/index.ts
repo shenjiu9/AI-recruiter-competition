@@ -1,0 +1,1 @@
+export { BriefView } from './BriefView';
