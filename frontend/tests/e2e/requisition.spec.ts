@@ -156,5 +156,9 @@ test('编制维护联调：终审不足加签，补足后才能审批并预占',
   await expect(row.getByRole('cell').nth(3)).toHaveText('2');
   await expect(row.getByRole('cell').nth(4)).toHaveText('0');
   await expect(page.getByRole('button', { name: '新增年度编制' })).toBeEnabled();
-  await page.screenshot({ path: 'test-results/headcount-management.png', fullPage: true });
+  await page.screenshot({
+    path: 'test-results/headcount-management.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
 });

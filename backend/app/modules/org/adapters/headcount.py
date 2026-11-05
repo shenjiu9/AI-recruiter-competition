@@ -92,7 +92,9 @@ class SqlHeadcount:
                     **values,
                 )
                 .on_conflict_do_nothing()
+                .returning(HeadcountRecord.dept)
             )
+            changed = result.scalar_one_or_none() is not None
         else:
             result = self.session.execute(
                 update(HeadcountRecord)
@@ -104,7 +106,8 @@ class SqlHeadcount:
                 )
                 .values(**values, version=HeadcountRecord.version + 1)
             )
-        if result.rowcount != 1:
+            changed = result.rowcount == 1
+        if not changed:
             raise DomainError(
                 "VERSION_CONFLICT", "编制已变化或调整后无法覆盖已用与预占人数，请刷新", 409
             )
