@@ -43,6 +43,7 @@
 - 三端真实依赖的 TypeScript 检查、ESLint 和生产构建通过；目前仍有 antd 等大包体积警告，后续优化按路由拆包。
 - 本机 Python 3.12.10 虚拟环境在 `backend/.venv`，生成的本地开发环境使用 SQLite 过渡。随机密钥和口令仅在被 Git 忽略的 `backend/.env`。
 - 已增加 GitHub Actions：临时 PostgreSQL 16 全套 API/并发测试、迁移回退/升级/一致性、后端镜像构建，以及三端前端构建和浏览器测试。远程结果以 Actions 实际状态为准。
+- 远程验证已通过：[PostgreSQL / 迁移 / 后端镜像](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42003134342)、[前端检查 / 构建 / 浏览器联调](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42003015962)。本机跳过的 PostgreSQL 专项已由远程真数据库环境覆盖；本机 Docker 引擎启动仍待 Windows 重启。
 
 ### 下次继续
 
