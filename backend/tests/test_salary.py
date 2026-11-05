@@ -179,7 +179,7 @@ def test_submitted_chain_and_salary_refs_survive_rule_changes(client, login, con
     assert req["history"][0]["salary_rules"] == refs
 
 
-@pytest.mark.parametrize("broken", ["missing", "inactive", "wrong-role", "self"])
+@pytest.mark.parametrize("broken", ["missing", "inactive", "wrong-role", "self", "manager-self"])
 def test_missing_inactive_or_self_hrd_cannot_bypass_signoff(
     client, login, container, fields, broken
 ):
@@ -191,6 +191,9 @@ def test_missing_inactive_or_self_hrd_cannot_bypass_signoff(
             db.get(UserRecord, "salary_hrd").active = False
         elif broken == "wrong-role":
             policy.policy = {**policy.policy, "hrd_id": "hrbp"}
+        elif broken == "manager-self":
+            policy.policy = {**policy.policy, "hrd_id": "manager"}
+            db.get(UserRecord, "manager").roles = ["hiring_manager", "hrd"]
         else:
             policy.policy = {**policy.policy, "hrd_id": "hr"}
             db.get(UserRecord, "hr").roles = ["recruiting_lead", "hrd"]

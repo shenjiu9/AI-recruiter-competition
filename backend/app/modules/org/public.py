@@ -64,6 +64,11 @@ class OrgFacade(HeadcountService):
             nodes.append(("salary", "HRD 薪资加签", policy.hrd_id))
         chain = []
         for key, name, user_id in nodes:
+            if key == "salary" and user_id in {facts["actor_id"], policy.manager_id}:
+                raise DomainError(
+                    "REQ_APPROVER_UNAVAILABLE",
+                    "HRD 不能审批本人发起或本人归属的招聘需求，请配置其他审批人",
+                )
             if user_id == facts["actor_id"]:
                 if key == "salary" or user_id == policy.hc_owner_id:
                     raise DomainError(
