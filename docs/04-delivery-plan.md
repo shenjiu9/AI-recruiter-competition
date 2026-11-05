@@ -98,7 +98,8 @@
 
 - 新增表单专用目录接口，按角色 / 部门范围返回组织树与人员搜索分页；独立于管理员配置接口。HR Web 发起 / 编辑表单和 HR Web / 业务 H5 代理确认接入真实 API。
 - 汇报对象按 `reportToId` 保存，姓名为快照，独立于审批归属经理；兼容唯一姓名的旧载荷。同名、离职、撤权和部门切换后的失效值提示重选；附加可见名单在写入及提交时重新校验。细节与限制见 `adr/0007-requisition-form-directory.md`。
-- 本地后端 176 项通过、1 项 PostgreSQL 专项留给远程 CI；新增 19 项目录测试。Ruff / 格式 / 依赖边界、前端类型 / lint / 三端构建通过。13 项浏览器测试通过，包含 3 项新目录流程与两端故障重试；远程 CI 结果待本批验证完成后记录。
+- 本地后端 176 项通过、1 项 PostgreSQL 专项由远程覆盖；新增 19 项目录测试。Ruff / 格式 / 依赖边界、前端类型 / lint / 三端构建通过。13 项浏览器测试通过，包含 3 项新目录流程与两端故障重试；已检查桌面与 390px H5 截图。
+- 功能提交 `d633f70` 的远程验证通过：[PostgreSQL 177 项测试 / 迁移升降 / schema 一致性 / Docker 镜像构建](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42069887062)、[前端检查 / 三端构建 / Chromium 13 项浏览器测试](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42069897037)。本机 Docker 引擎运行仍未验收，不将 CI 镜像构建视为本机容器可用。
 - 本地目录人员关联采用有效授权部门范围，真实飞书任职关系 / 同步尚未接入；替补关系和追加岗位仍按原规则阻止提交。本批无新迁移，不改变 Agent / Dify 架构。
 
 ### 下次继续
