@@ -82,11 +82,20 @@ class SqlRepository:
         self.session.flush()
 
     def search(self, principal, page, size, status):
+        if not {
+            "recruiter",
+            "recruiting_lead",
+            "hiring_manager",
+            "hrbp",
+            "hrd",
+            "headcount_owner",
+        }.intersection(principal.roles):
+            return [], 0
         visible = select(AccessRecord.requisition_id).where(
             AccessRecord.user_id == principal.user_id
         )
         scope = RequisitionRecord.id.in_(visible)
-        if {"recruiter", "recruiting_lead", "hrbp"}.intersection(principal.roles):
+        if {"recruiting_lead", "hiring_manager", "hrbp"}.intersection(principal.roles):
             scope = or_(
                 scope,
                 and_(

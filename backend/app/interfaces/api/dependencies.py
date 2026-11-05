@@ -17,6 +17,6 @@ def write(request, ctx, services, payload, operation):
         ctx.principal.user_id,
         request.method + ":" + request.url.path,
         request.headers.get("Idempotency-Key"),
-        payload,
+        {"permission_version": ctx.principal.permission_version, "body": payload},
         operation,
     )

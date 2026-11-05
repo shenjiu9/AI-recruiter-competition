@@ -125,6 +125,15 @@ export function Shell() {
               onClick={(e) => nav(e.key)}
             />
           )}
+          {session?.roles.some((role) => role === 'admin' || role === 'recruiting_lead') && (
+            <Menu
+              selectedKeys={[loc.pathname]}
+              items={[
+                { key: '/settings/organization', icon: <SettingOutlined />, label: '组织与权限' },
+              ]}
+              onClick={(e) => nav(e.key)}
+            />
+          )}
           {session?.roles.some(
             (role) => role === 'recruiting_lead' || role === 'compensation_owner',
           ) && (

@@ -14,6 +14,32 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  organizationDepartments: () => ({ method: 'GET', path: '/admin/organization/departments' }),
+  organizationUsers: (page, size, q = '') => ({
+    method: 'GET',
+    path: `/admin/organization/users?page=${page}&size=${size}&q=${enc(q)}`,
+  }),
+  savePermissions: (id, body, opts) => ({
+    method: 'POST',
+    path: `/admin/organization/users/${enc(id)}/permissions`,
+    body,
+    opts,
+  }),
+  saveApprovalPolicy: (dept, body, opts) => ({
+    method: 'POST',
+    path: `/admin/organization/approval?dept=${enc(dept)}`,
+    body,
+    opts,
+  }),
+  organizationHistory: (kind, id, page) => ({
+    method: 'GET',
+    path: `/admin/organization/history?kind=${kind}&object_id=${enc(id)}&page=${page}&size=20`,
+  }),
+  trialApproval: (dept, actor, hc, salary) => ({
+    method: 'POST',
+    path: `/admin/organization/trial?dept=${enc(dept)}`,
+    body: { actor_id: actor, hc_request: hc, salary_over: salary },
+  }),
   salaryBands: (page, size) => ({
     method: 'GET',
     path: `/admin/salary-bands?page=${page}&size=${size}`,

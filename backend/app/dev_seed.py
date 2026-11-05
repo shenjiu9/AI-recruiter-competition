@@ -9,6 +9,7 @@ from app.platform.settings import Settings
 
 DEPARTMENTS = ["客服中心", "销售部 / 华南大区", "经营分析部", "财务部"]
 USERS = [
+    ("admin", "系统管理员", ["admin"], []),
     ("hr", "林悦", ["recruiter", "recruiting_lead"], DEPARTMENTS),
     ("manager", "何美玲", ["hiring_manager"], ["客服中心"]),
     ("sales", "周振华", ["hiring_manager"], ["销售部 / 华南大区"]),
@@ -28,7 +29,16 @@ def seed(container):
     with container.db.sessions.begin() as session:
         for user_id, name, roles, departments in USERS:
             if session.get(UserRecord, user_id) is None:
-                session.add(UserRecord(id=user_id, name=name, roles=roles, departments=departments))
+                session.add(
+                    UserRecord(
+                        id=user_id,
+                        name=name,
+                        roles=[r for r in roles if r != "hiring_manager"],
+                        departments=departments if set(roles) - {"hiring_manager"} else [],
+                        directory_roles=["hiring_manager"] if "hiring_manager" in roles else [],
+                        directory_departments=departments if "hiring_manager" in roles else [],
+                    )
+                )
         for dept, manager in zip(
             DEPARTMENTS, ["manager", "sales", "analyst", "analyst"], strict=True
         ):

@@ -14,6 +14,7 @@ import { AutomationSettingsPage } from '../pages/AutomationSettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
 import { SalarySettingsPage } from '../pages/SalarySettingsPage';
+import { OrganizationSettingsPage } from '../pages/OrganizationSettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'settings/automation', element: <AutomationSettingsPage /> },
       { path: 'settings/headcount', element: <HeadcountSettingsPage /> },
       { path: 'settings/salary', element: <SalarySettingsPage /> },
+      { path: 'settings/organization', element: <OrganizationSettingsPage /> },
       { path: '*', element: <PlaceholderPage title="页面不存在" /> },
     ],
   },

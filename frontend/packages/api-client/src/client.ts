@@ -31,6 +31,48 @@ export interface WriteOpts {
   idempotencyKey: string;
 }
 
+export interface OrganizationUser {
+  id: string;
+  name: string;
+  active: boolean;
+  version: number;
+  roles: string[];
+  departments: string[];
+  directory_roles: string[];
+  directory_departments: string[];
+}
+export interface OrganizationDepartment {
+  id: string;
+  parent_id: string | null;
+  version: number;
+  approver_names?: Record<string, string | null>;
+  policy: {
+    manager_id: string;
+    director_id: string;
+    hrbp_id: string;
+    hc_owner_id: string;
+    hrd_id?: string | null;
+  };
+}
+export interface PermissionCommand {
+  expected_version: number;
+  roles: string[];
+  departments: string[];
+}
+export interface ApprovalPolicyCommand {
+  expected_version: number;
+  director_id: string;
+  hrbp_id: string;
+  hc_owner_id: string;
+  hrd_id: string;
+}
+export interface OrganizationRevision {
+  version: number;
+  actor_id: string | null;
+  at: string;
+  data: OrganizationUser | OrganizationDepartment;
+}
+
 export interface CardResolution {
   option: string;
   expectedVersion: number;
@@ -159,6 +201,33 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  organizationDepartments(): Promise<OrganizationDepartment[]>;
+  organizationUsers(
+    page: number,
+    size: number,
+    q?: string,
+  ): Promise<{ items: OrganizationUser[]; total: number }>;
+  savePermissions(
+    id: string,
+    command: PermissionCommand,
+    opts: WriteOpts,
+  ): Promise<OrganizationUser>;
+  saveApprovalPolicy(
+    dept: string,
+    command: ApprovalPolicyCommand,
+    opts: WriteOpts,
+  ): Promise<OrganizationDepartment>;
+  organizationHistory(
+    kind: 'permissions' | 'approval',
+    id: string,
+    page: number,
+  ): Promise<{ items: OrganizationRevision[]; total: number }>;
+  trialApproval(
+    dept: string,
+    actor: string,
+    hc: boolean,
+    salary: boolean,
+  ): Promise<{ version: number; chain: RequisitionDetail['chain'] }>;
   salaryBands(
     page: number,
     size: number,

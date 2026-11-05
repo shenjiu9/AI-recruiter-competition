@@ -1,7 +1,42 @@
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+AssignedRole = Literal[
+    "recruiting_lead",
+    "recruiter",
+    "hrbp",
+    "headcount_owner",
+    "hrd",
+    "compensation_owner",
+    "interviewer",
+    "admin",
+]
+
+
+class PermissionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+    roles: list[AssignedRole] = Field(max_length=8)
+    departments: list[str] = Field(max_length=500)
+
+
+class ApprovalPolicyCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    expected_version: int = Field(ge=1)
+    director_id: str = Field(min_length=1, max_length=64)
+    hrbp_id: str = Field(min_length=1, max_length=64)
+    hc_owner_id: str = Field(min_length=1, max_length=64)
+    hrd_id: str = Field(min_length=1, max_length=64)
+
+
+class ApprovalTrial(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    actor_id: str = Field(min_length=1, max_length=64)
+    hc_request: bool = False
+    salary_over: bool = False
 
 
 class SalaryBandCommand(BaseModel):
@@ -49,17 +84,18 @@ class UserDTO:
     name: str
     roles: tuple[str, ...]
     departments: tuple[str, ...]
+    permission_version: int = 1
 
 
 @dataclass(frozen=True)
 class DepartmentPolicy:
     id: str
-    available_hc: int
     manager_id: str
     director_id: str
     hrbp_id: str
     hc_owner_id: str
-    salary_max: float
+    available_hc: int = 0
+    salary_max: float = 0
     hrd_id: str | None = None
 
 

@@ -23,7 +23,7 @@ class Auth:
             user = self.directory.get_user(claims["sub"])
         except (jwt.PyJWTError, DomainError):
             raise DomainError("UNAUTHENTICATED", "登录已失效，请重新登录", 401) from None
-        return Principal(user.id, user.name, user.roles, user.departments)
+        return Principal(user.id, user.name, user.roles, user.departments, user.permission_version)
 
     def dev_login(self, user_id: str, password: str) -> dict:
         if not self.settings.dev_auth_enabled:

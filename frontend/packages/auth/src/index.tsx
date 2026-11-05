@@ -211,6 +211,7 @@ export function SessionGate({
               <option value="hrbp">人力伙伴 · HRBP</option>
               <option value="hrd">编制负责人</option>
               <option value="salary_hrd">薪酬审批负责人 · HRD</option>
+              <option value="admin">系统管理员 · 组织与权限</option>
               <option value="payroll">薪酬维护负责人</option>
               <option value="analyst">田野 · 经营分析 / 财务</option>
               <option value="sales">周振华 · 销售部</option>

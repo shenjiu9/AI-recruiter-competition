@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from app.kernel.types import DomainError
+from app.modules.org.configuration import APPROVER_ROLES, ConfigurationService
 from app.modules.org.contracts import ApprovalNode, DepartmentPolicy, UserDTO
 from app.modules.org.headcount import HeadcountService
 from app.modules.org.salary import SalaryService
@@ -9,13 +10,23 @@ from app.modules.org.salary import SalaryService
 class Directory(Protocol):
     def get_user(self, user_id: str) -> UserDTO | None: ...
     def policy(self, dept_id: str) -> DepartmentPolicy | None: ...
+    def expand_scope(self, roots): ...
 
 
 class OrgFacade(HeadcountService):
-    def __init__(self, directory: Directory, headcount, salary, clock, journal):
+    def __init__(self, directory: Directory, headcount, salary, clock, journal, configuration):
         super().__init__(headcount, clock, journal)
         self.directory = directory
         self.salary = SalaryService(salary, clock, journal)
+        self.configuration = ConfigurationService(configuration, self, clock, journal)
+
+    def check_approver(self, user_id, dept, node_id):
+        user = self.get_user(user_id)
+        if dept not in user.departments or not APPROVER_ROLES[node_id].intersection(user.roles):
+            raise DomainError(
+                "ORG_APPROVER_INVALID", "审批人缺少该部门范围或所需角色，请管理员检查配置", 422
+            )
+        return user
 
     def salary_check(self, series, level, city, quote):
         return self.salary.check(series, level, city, quote)
@@ -80,6 +91,6 @@ class OrgFacade(HeadcountService):
                 note = "发起人本人，已上推"
             else:
                 note = None
-            user = self.get_user(user_id)
+            user = self.check_approver(user_id, dept_id, "hc" if note else key)
             chain.append(ApprovalNode(key, name, user.id, user.name, note))
         return chain

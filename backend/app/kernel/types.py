@@ -23,6 +23,7 @@ class Principal:
     name: str
     roles: tuple[str, ...]
     departments: tuple[str, ...]
+    permission_version: int = 1
 
 
 @dataclass(frozen=True)

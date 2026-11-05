@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 from app.kernel.types import SystemClock
+from app.modules.org.adapters.configuration import SqlConfiguration
 from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
 from app.modules.org.adapters.salary import SqlSalary
@@ -31,6 +32,7 @@ class Container:
                 SqlSalary(session, self.crypto),
                 self.clock,
                 SqlJournal(session, self.clock),
+                SqlConfiguration(session),
             )
             yield SimpleNamespace(
                 org=org,

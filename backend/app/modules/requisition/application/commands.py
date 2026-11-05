@@ -44,12 +44,21 @@ class RequisitionCommands:
 
     def _visible(self, ctx, req):
         p = ctx.principal
+        if not {
+            "recruiter",
+            "recruiting_lead",
+            "hiring_manager",
+            "hrbp",
+            "hrd",
+            "headcount_owner",
+        }.intersection(p.roles):
+            return False
         actors = {req.creator_id, req.manager_id, *(n["approver_id"] for n in req.chain)}
         actors.update(x.strip() for x in req.fields.get("visibleTo", "").split(",") if x.strip())
         return p.user_id in actors or (
             req.fields.get("confidential") != "1"
             and req.dept in p.departments
-            and bool(HR_ROLES.intersection(p.roles))
+            and bool({"recruiting_lead", "hiring_manager", "hrbp"}.intersection(p.roles))
         )
 
     def get_entity(self, ctx, req_id):
@@ -285,6 +294,7 @@ class RequisitionCommands:
         node = req.chain[0]
         if node["id"] != "manager" or node["approver_id"] != ctx.principal.user_id:
             raise DomainError("FORBIDDEN", "只有当前归属用人经理可以修改确认", 403)
+        self.org.check_approver(ctx.principal.user_id, req.dept, "manager")
         fields = self._validate_fields({**req.fields, **patch})
         changes = {
             k: {"before": req.fields.get(k, ""), "after": v}
@@ -355,6 +365,11 @@ class RequisitionCommands:
         node = req.chain[req.current_node]
         if node["id"] != node_id or node["approver_id"] != ctx.principal.user_id:
             raise DomainError("FORBIDDEN", "只有当前节点审批人可以处理", 403)
+        self.org.check_approver(
+            ctx.principal.user_id,
+            req.dept,
+            "hc" if node.get("note") == "发起人本人，已上推" else node_id,
+        )
         if not approve and not (comment or "").strip():
             raise DomainError("REQ_REJECT_REASON_REQUIRED", "驳回原因不能为空")
         old = self._snapshot(req)
