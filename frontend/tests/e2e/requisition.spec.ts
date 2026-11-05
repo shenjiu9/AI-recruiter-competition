@@ -1,0 +1,89 @@
+import { expect, test, type Page } from '@playwright/test';
+
+async function login(page: Page, user: string, base = 'http://127.0.0.1:5183') {
+  await page.goto(base);
+  if (await page.getByRole('button', { name: '退出登录' }).isVisible())
+    await page.getByRole('button', { name: '退出登录' }).click();
+  await page.getByLabel('开发账号').selectOption(user);
+  await page.getByLabel('开发登录口令').fill('e2e-only-password');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.getByRole('button', { name: '退出登录' })).toBeVisible();
+}
+
+async function select(page: Page, id: string, text: string) {
+  await page.locator(id).click();
+  await page.locator('.ant-select-item-option-content').getByText(text, { exact: true }).click();
+}
+
+test('真实 API：HR 保存恢复草稿、提交、业务方驳回、重提、三级审批', async ({ page, browser }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const title = `联调客服-${Date.now()}`;
+  await login(page, 'hr');
+  await page.getByRole('button', { name: '发起招聘需求', exact: true }).click();
+  await select(page, '#f-dept', '客服中心');
+  await page.getByText('新增', { exact: true }).click();
+  await page.locator('#f-headcount').fill('2');
+  await page.locator('#f-title').fill(title);
+  await page.locator('#f-series').fill('客服');
+  await page.locator('#f-level').fill('P3');
+  await page.locator('#f-city').fill('深圳');
+  await select(page, '#f-reportTo', '何美玲');
+  await page
+    .locator('#f-expectedOnboard')
+    .fill(new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10));
+  await page.locator('#f-salary').fill('8-12K/月×13');
+  await page.locator('#f-reason').fill('客户服务团队扩编');
+  await page.locator('#f-duties').fill('处理客户咨询和问题');
+  await page.locator('#f-requirements').fill('具有沟通和问题解决能力');
+  await page.getByRole('button', { name: '保存草稿并返回' }).click();
+  await expect(page.getByRole('link', { name: title, exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  const detailUrl = page.url();
+  await page.getByRole('button', { name: '编辑需求' }).click();
+  await expect(page.locator('#f-duties')).toHaveValue('处理客户咨询和问题');
+  await page.getByRole('button', { name: '提交审批', exact: true }).click();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(page.getByText(/审批中/)).toBeVisible();
+
+  const bizContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const biz = await bizContext.newPage();
+  biz.on('pageerror', (error) => errors.push(error.message));
+  await login(biz, 'manager', 'http://127.0.0.1:5184');
+  const card = biz.locator('article').filter({ hasText: title });
+  await card.getByRole('button', { name: '查看需求 / 驳回' }).click();
+  await biz.getByPlaceholder('说明需要调整的内容').fill('请补充业务扩展原因');
+  await biz.getByRole('button', { name: '确认驳回' }).click();
+  await expect(card).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(/已驳回/)).toBeVisible();
+  await page.getByRole('button', { name: '编辑需求' }).click();
+  await page.locator('#f-reason').fill('新增两条客户服务业务线，需要扩大团队');
+  await page.getByRole('button', { name: '提交审批', exact: true }).click();
+  await expect(page).toHaveURL(detailUrl);
+
+  for (const actor of ['manager', 'director', 'hrbp']) {
+    await login(biz, actor, 'http://127.0.0.1:5184');
+    await biz
+      .locator('article')
+      .filter({ hasText: title })
+      .getByRole('button', { name: '通过', exact: true })
+      .click();
+    await expect(biz.locator('article').filter({ hasText: title })).toHaveCount(0);
+  }
+  await page.reload();
+  await expect(page.getByText('需求审批已通过', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/requisition-approved.png', fullPage: true });
+  await bizContext.close();
+  expect(errors).toEqual([]);
+});
+
+test('AI 未配置时明确降级，手工内容保留', async ({ page }) => {
+  await login(page, 'hr');
+  await page.goto('/requisitions/new');
+  await page.locator('#f-title').fill('手工保留的职位');
+  await page.getByRole('button', { name: '让 AI 填写' }).click();
+  await expect(page.getByText('AI 填表尚未配置，请手工填写；已填写的内容不会丢失')).toBeVisible();
+  await expect(page.locator('#f-title')).toHaveValue('手工保留的职位');
+});

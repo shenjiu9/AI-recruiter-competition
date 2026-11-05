@@ -1,0 +1,76 @@
+name: ai-recruiter
+
+x-backend: &backend
+  build: ../backend
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://recruiter:${POSTGRES_PASSWORD:-recruiter}@postgres:5432/recruiter
+    SIGNING_KEY: ${SIGNING_KEY:?Run backend/scripts/setup_local.py first}
+    ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Run backend/scripts/setup_local.py first}
+    ENVIRONMENT: development
+    DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-false}
+    DEV_LOGIN_PASSWORD: ${DEV_LOGIN_PASSWORD:-}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: recruiter
+      POSTGRES_USER: recruiter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recruiter}
+    ports: ['127.0.0.1:5432:5432']
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U recruiter -d recruiter']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  migrate:
+    <<: *backend
+    command: ['alembic', 'upgrade', 'head']
+    depends_on:
+      postgres: {condition: service_healthy}
+  seed:
+    <<: *backend
+    profiles: ['demo']
+    command: ['python', '-m', 'app.dev_seed']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  api:
+    <<: *backend
+    ports: ['127.0.0.1:8000:8000']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://localhost:8000/health/ready")']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  hr-web:
+    profiles: ['web']
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args: {APP: hr-web}
+    ports: ['127.0.0.1:5173:80']
+    depends_on:
+      api: {condition: service_healthy}
+  biz-h5:
+    profiles: ['web']
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args: {APP: biz-h5}
+    ports: ['127.0.0.1:5174:80']
+    depends_on:
+      api: {condition: service_healthy}
+
+volumes:
+  postgres-data:

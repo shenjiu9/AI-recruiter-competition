@@ -13,7 +13,9 @@ AI 招聘官系统的需求、MVP 规划与详细实现设计。三份文档从�
 | 目录 | 内容 |
 | --- | --- |
 | [frontend/](frontend/README.md) | 前端 monorepo（pnpm + Turborepo）：HR Web、飞书内 H5、候选人 H5，以及共享的领域、接口、主题与组件包 |
-| backend/ | 后端，尚未开始 |
+| [backend/](backend/README.md) | 后端基础与招聘需求首批流程：草稿、预检、审批、权限、幂等、审计、迁移与测试 |
+| [deploy/](deploy/compose.yaml) | 本地 Docker Compose：PostgreSQL、Redis、API、HR 与业务 H5 |
+| [交付任务](docs/04-delivery-plan.md) | 后端、联调、测试的分批任务与剩余范围 |
 
 ```bash
 pnpm install

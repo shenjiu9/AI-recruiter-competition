@@ -7,6 +7,8 @@ import { PositionListPage } from '../pages/PositionListPage';
 import { PositionDetailPage } from '../pages/PositionDetailPage';
 import { RequisitionListPage } from '../pages/RequisitionListPage';
 import { RequisitionNewPage } from '../pages/RequisitionNewPage';
+import { RequisitionDetailPage } from '../pages/RequisitionDetailPage';
+import { RequisitionEditPage } from '../pages/RequisitionEditPage';
 import { InterviewsPage } from '../pages/InterviewsPage';
 import { AutomationSettingsPage } from '../pages/AutomationSettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
@@ -15,10 +17,20 @@ export const router = createBrowserRouter([
   {
     element: <Shell />,
     children: [
-      { index: true, element: <Navigate to="/workbench" replace /> },
+      {
+        index: true,
+        element: (
+          <Navigate
+            to={import.meta.env.VITE_USE_MOCK === 'false' ? '/requisitions' : '/workbench'}
+            replace
+          />
+        ),
+      },
       { path: 'workbench', element: <WorkbenchPage /> },
       { path: 'requisitions', element: <RequisitionListPage /> },
       { path: 'requisitions/new', element: <RequisitionNewPage /> },
+      { path: 'requisitions/:id', element: <RequisitionDetailPage /> },
+      { path: 'requisitions/:id/edit', element: <RequisitionEditPage /> },
       { path: 'positions', element: <PositionListPage /> },
       { path: 'positions/:id', element: <PositionDetailPage /> },
       { path: 'candidates', element: <CandidateListPage /> },

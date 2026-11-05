@@ -2,10 +2,10 @@ name: frontend
 
 on:
   push:
-    branches: [main]
-    paths: ['frontend/**', 'package.json', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.config.js']
+    branches: [main, 'feat/backend-*']
+    paths: ['frontend/**', 'backend/**', 'package.json', 'pnpm-lock.yaml', 'playwright.config.ts', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.config.js', '.github/workflows/frontend.yml']
   pull_request:
-    paths: ['frontend/**', 'package.json', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.config.js']
+    paths: ['frontend/**', 'backend/**', 'package.json', 'pnpm-lock.yaml', 'playwright.config.ts', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.config.js', '.github/workflows/frontend.yml']
 
 jobs:
   check:
@@ -17,7 +17,26 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build
+  browser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements-dev.lock -e .
+        working-directory: backend
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-results
+          path: test-results/

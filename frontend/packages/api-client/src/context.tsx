@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { ApiClient, ApiConfig } from './client';
 import { createHttpClient } from './http';
 import { createMockClient } from './mock/server';
+import { useSession } from '@recruiter/auth';
 
 export function createApiClient(config: ApiConfig): ApiClient {
   return config.mock ? createMockClient() : createHttpClient(config);
@@ -10,7 +11,12 @@ export function createApiClient(config: ApiConfig): ApiClient {
 const ApiContext = createContext<ApiClient | null>(null);
 
 export function ApiProvider({ config, children }: { config: ApiConfig; children: ReactNode }) {
-  const client = useMemo(() => createApiClient(config), [config]);
+  const session = useSession();
+  const client = useMemo(
+    () =>
+      createApiClient({ ...config, getToken: config.getToken ?? (() => session?.token ?? null) }),
+    [config, session?.token],
+  );
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
 }
 

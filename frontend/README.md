@@ -82,4 +82,8 @@ frontend/
 
 ## 验证状态
 
-本次提交在不能访问 npm 仓库的环境中完成：已用 TypeScript 对全部源码做过类型检查（第三方库用类型桩代替），但还没有实际安装依赖、构建和在浏览器中运行。第一次拉取后请执行 `pnpm install && pnpm typecheck && pnpm build`，CI（`.github/workflows/frontend.yml`）也会做同样的检查。
+初始前端提交仅使用类型桩检查；后端首批联调已安装真实依赖并加入锁文件，修复移动端事件回调类型和不规则空格问题。当前检查命令为 `pnpm typecheck && pnpm lint && pnpm build`。
+
+招聘需求的分页列表、详情、编辑/保存草稿、提交/撤回、HR 审批及业务 H5 审批/驳回已接真实 API。真实模式启动与开发登录见 [后端说明](../backend/README.md)。其他模块的真实 API 仍按 [交付任务](../docs/04-delivery-plan.md) 分批建设；默认 mock 可以继续演示原界面。
+
+`pnpm test:e2e` 会启动隔离测试 API 和 HR/业务前端，用真实 HTTP 验证草稿恢复、提交、驳回、重提、三级审批，以及 AI 未配置时保留手工输入的降级流程。测试会话不会写入你的业务数据库。

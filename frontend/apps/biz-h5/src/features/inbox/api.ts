@@ -10,5 +10,14 @@ export function useInbox() {
 
 export function useInboxAct() {
   const api = useApi();
-  return useWrite((v: { id: string; action: string }, opts) => api.bizAct(v.id, v.action, opts), { invalidate: [qk.biz.inbox()] });
+  return useWrite(
+    async (v: { id: string; action: string; version?: number; nodeId?: string }, opts) => {
+      if (v.version !== undefined && v.nodeId) {
+        await api.approveRequisition(v.id, v.nodeId, v.version, opts);
+        return;
+      }
+      await api.bizAct(v.id, v.action, opts);
+    },
+    { invalidate: [qk.biz.inbox()] },
+  );
 }

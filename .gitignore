@@ -5,3 +5,14 @@ dist/
 .env.local
 .DS_Store
 coverage/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-journal
+test-results/
+playwright-report/
+.import_linter_cache/

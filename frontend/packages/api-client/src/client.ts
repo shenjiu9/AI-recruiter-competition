@@ -47,6 +47,24 @@ export interface BizInboxItem {
   applicationId?: string;
   dueAt: string;
   done?: string;
+  version?: number;
+  nodeId?: string;
+}
+
+export interface RequisitionDetail extends Requisition {
+  fields: Record<string, string>;
+  chain: { id: string; name: string; approver_id: string; approver: string; note?: string }[];
+  currentNode: number;
+  creatorId: string;
+  managerId: string;
+  history: { action: string; actor_id: string; at: string; comment?: string; node_id?: string }[];
+}
+
+export interface RequisitionPage {
+  items: Requisition[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface CandidateBrief {
@@ -96,19 +114,63 @@ export interface ApiClient {
   handBack(candidateId: string, opts: WriteOpts): Promise<Conversation>;
   sendAsHr(candidateId: string, text: string, opts: WriteOpts): Promise<Message>;
   revealContact(candidateId: string, opts: WriteOpts): Promise<{ phone: string; email: string }>;
-  setKey(candidateId: string, isKey: boolean, expectedVersion: number, opts: WriteOpts): Promise<Candidate>;
+  setKey(
+    candidateId: string,
+    isKey: boolean,
+    expectedVersion: number,
+    opts: WriteOpts,
+  ): Promise<Candidate>;
 
   // 岗位
   listPositions(): Promise<Position[]>;
   getPosition(id: string): Promise<Position>;
   positionFunnel(id: string): Promise<FunnelStage[]>;
-  positionApplications(id: string): Promise<(Application & { candidateName: string; confidence?: number })[]>;
+  positionApplications(
+    id: string,
+  ): Promise<(Application & { candidateName: string; confidence?: number })[]>;
   getProfile(positionId: string): Promise<Profile>;
   listKb(positionId: string): Promise<KbEntry[]>;
-  transitionPosition(id: string, action: 'pause' | 'resume' | 'close', expectedVersion: number, opts: WriteOpts): Promise<Position>;
+  transitionPosition(
+    id: string,
+    action: 'pause' | 'resume' | 'close',
+    expectedVersion: number,
+    opts: WriteOpts,
+  ): Promise<Position>;
 
   // 招聘需求
   listRequisitions(): Promise<Requisition[]>;
+  requisitionPage(page: number, size: number): Promise<RequisitionPage>;
+  getRequisition(id: string): Promise<RequisitionDetail>;
+  createRequisitionDraft(
+    fields: Record<string, string>,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
+  updateRequisitionDraft(
+    id: string,
+    fields: Record<string, string>,
+    version: number,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
+  submitRequisitionDraft(
+    id: string,
+    fields: Record<string, string>,
+    version: number,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
+  withdrawRequisition(id: string, version: number, opts: WriteOpts): Promise<RequisitionDetail>;
+  approveRequisition(
+    id: string,
+    nodeId: string,
+    version: number,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
+  rejectRequisition(
+    id: string,
+    nodeId: string,
+    version: number,
+    reason: string,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
   aiFillRequisition(text: string): Promise<RequisitionDraft>;
   precheckRequisition(fields: Record<string, string>): Promise<PrecheckItem[]>;
   approvalChain(fields: Record<string, string>): Promise<ApprovalNode[]>;
@@ -125,7 +187,11 @@ export interface ApiClient {
   bizInbox(): Promise<BizInboxItem[]>;
   bizAct(itemId: string, action: string, opts: WriteOpts): Promise<BizInboxItem>;
   candidateBrief(applicationId: string): Promise<CandidateBrief>;
-  submitFeedback(applicationId: string, items: Record<string, string>, opts: WriteOpts): Promise<void>;
+  submitFeedback(
+    applicationId: string,
+    items: Record<string, string>,
+    opts: WriteOpts,
+  ): Promise<void>;
 
   // 候选人端
   portalSession(token: string): Promise<PortalSession>;
