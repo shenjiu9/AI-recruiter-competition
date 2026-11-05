@@ -39,7 +39,8 @@
 - 本地后端：26 项通过，1 项 PostgreSQL 专项因本机容器尚不可用而跳过；包含状态/权限/回滚/幂等/版本冲突及同事务更新提交测试。
 - 浏览器：2 项真实 API 测试通过，覆盖 HR Web 和 390px 业务 H5；已检查审批完成截图。
 - SQLAlchemy/Alembic schema 一致性、Ruff、模块分层和跨模块私有导入检查通过。
-- Docker Desktop 29.9.2 CLI、Compose 5.6.1、WSL 已安装；两个 Windows 功能启用均返回需重启。Compose 配置校验通过，但本机引擎未启动，不能将其记为容器运行成功。
+- Docker Desktop 4.98.0、Docker CLI 29.9.2、Compose 5.6.1、WSL 已安装；两个 Windows 功能启用均返回需重启。Compose 配置校验通过，但本机引擎未启动，不能将其记为容器运行成功。
+- 三端真实依赖的 TypeScript 检查、ESLint 和生产构建通过；目前仍有 antd 等大包体积警告，后续优化按路由拆包。
 - 本机 Python 3.12.10 虚拟环境在 `backend/.venv`，生成的本地开发环境使用 SQLite 过渡。随机密钥和口令仅在被 Git 忽略的 `backend/.env`。
 - 已增加 GitHub Actions：临时 PostgreSQL 16 全套 API/并发测试、迁移回退/升级/一致性、后端镜像构建，以及三端前端构建和浏览器测试。远程结果以 Actions 实际状态为准。
 
