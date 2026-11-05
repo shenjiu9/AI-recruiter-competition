@@ -50,8 +50,9 @@
 - 新增年度编制迁移、维护 API 和 HR Web `/settings/headcount`：计划、已用、招聘预占、可用、生效日期、冻结、版本及超过 30 天未维护提示。HRBP / 编制负责人按部门范围维护。
 - 正式需求终审条件更新预占，不足或冻结自动加签提交时快照中的编制负责人；补足后才能审批。外包和实习不占正式 HC。预占、需求、事件、审计和幂等结果同事务；保存失败全部回滚。
 - 并发抢名额与同一需求并发终审均有测试，PostgreSQL 使用 barrier 强制同时进入预占。细节及限制见 `adr/0002-headcount-reservation.md`。
-- 本地后端 37 项通过，1 项 PostgreSQL 专项待远程执行；迁移升级/一致性、Ruff、模块边界检查通过。前端类型检查、lint、三端生产构建通过。
+- 本地后端 37 项通过，1 项 PostgreSQL 专项由远程执行；迁移升级/一致性、Ruff、模块边界检查通过。前端类型检查、lint、三端生产构建通过。
 - 浏览器 3 项通过，新增覆盖编制页面维护、终审不足加签、拒绝绕过额度、补足后预占的完整流程；HR 和业务 H5 原有流程回归通过。
+- 代码提交 `1ed7a71` 的远程检查全部通过：[PostgreSQL 38 项测试 / 迁移升降 / 镜像构建](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42009548047)、[三端检查构建 / 浏览器联调](https://github.com/shenjiu9/AI-recruiter-competition/actions/runs/42009548113)。真实数据库测试发现并修复了新增编制的 INSERT 行数误判，改用 RETURNING 判断是否插入。
 - Docker Desktop 已尝试启动，但 WSL 仍报告当前虚拟化环境不支持 WSL2，本机引擎未就绪；没有重启电脑或声称容器可用。
 - 尚未完成：季度编制、待审批占用投影、结转、Excel 导入、预占释放/转已用、薪资表、代理修改确认及 B03 的其他子项。
 
