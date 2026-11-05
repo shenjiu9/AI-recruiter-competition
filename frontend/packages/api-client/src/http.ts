@@ -104,6 +104,17 @@ const routes: Routes = {
     path: `/hr/requisitions?page=${page}&size=${size}`,
   }),
   getRequisition: (id) => ({ method: 'GET', path: `/hr/requisitions/${enc(id)}` }),
+  previewConfirmation: (id, fields, version) => ({
+    method: 'POST',
+    path: `/hr/requisitions/${enc(id)}/confirmation-preview`,
+    body: { fields, expected_version: version },
+  }),
+  confirmRequisition: (id, fields, version, opts) => ({
+    method: 'POST',
+    path: `/hr/requisitions/${enc(id)}/confirm`,
+    body: { fields, expected_version: version },
+    opts,
+  }),
   createRequisitionDraft: (fields, opts) => ({
     method: 'POST',
     path: '/hr/requisitions/drafts',

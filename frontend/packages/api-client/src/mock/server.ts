@@ -72,6 +72,8 @@ export function createMockClient(): ApiClient {
     submitRequisitionDraft: backendOnly,
     withdrawRequisition: backendOnly,
     approveRequisition: backendOnly,
+    previewConfirmation: backendOnly,
+    confirmRequisition: backendOnly,
     rejectRequisition: backendOnly,
     async workbenchSummary() {
       await wait(150);

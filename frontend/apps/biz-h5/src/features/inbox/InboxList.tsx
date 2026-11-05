@@ -108,6 +108,11 @@ export function InboxList({ items }: { items: BizInboxItem[] }) {
                     <Button block size="large" onClick={() => setReviewId(it.id)}>
                       查看需求 / 驳回
                     </Button>
+                    {it.nodeId === 'manager' && (
+                      <Button block onClick={() => setReviewId(it.id)}>
+                        修改并确认
+                      </Button>
+                    )}
                   </>
                 )}
                 {it.kind === 'feedback' && (

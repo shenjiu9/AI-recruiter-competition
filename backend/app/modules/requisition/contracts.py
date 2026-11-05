@@ -60,6 +60,15 @@ class DraftPatch(VersionCommand):
     fields: dict[str, str]
 
 
+class ConfirmationPreview(BaseModel):
+    version: int
+    fields: dict[str, str]
+    changes: dict[str, dict[str, str]]
+    checks: list[PrecheckItem]
+    chain: list[ApprovalNodeDTO]
+    salary_rules: list[dict]
+
+
 class SubmitCommand(VersionCommand):
     fields: dict[str, str] | None = None
 

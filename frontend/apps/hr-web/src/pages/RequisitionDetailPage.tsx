@@ -1,7 +1,10 @@
 import { Alert, Button, Descriptions, Input, Modal, Space, Spin, Steps, Timeline } from 'antd';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useSession } from '@recruiter/auth';
+import { confirmationFieldLabel } from '@recruiter/api-client';
+import { ManagerConfirmation } from '../features/requisition/ui/ManagerConfirmation';
 import { REQ_STATUS_LABEL } from '@recruiter/domain';
 import { useRequisitionAction, useRequisitionDetail } from '../features/requisition';
 import { PageHeader } from '../shared/PageHeader';
@@ -9,10 +12,12 @@ import { PageHeader } from '../shared/PageHeader';
 export function RequisitionDetailPage() {
   const { id = '' } = useParams();
   const query = useRequisitionDetail(id);
+  const qc = useQueryClient();
   const action = useRequisitionAction(query.data);
   const session = useSession();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [confirming, setConfirming] = useState(false);
   if (query.isPending) return <Spin />;
   if (!query.data) return <Alert type="error" message={query.error?.message ?? '需求不存在'} />;
   const req = query.data;
@@ -52,6 +57,9 @@ export function RequisitionDetailPage() {
                 <Button danger disabled={action.isPending} onClick={() => setRejecting(true)}>
                   驳回需求
                 </Button>
+                {req.chain[req.currentNode]?.id === 'manager' && (
+                  <Button onClick={() => setConfirming(true)}>修改并确认</Button>
+                )}
               </>
             )}
           </Space>
@@ -100,9 +108,37 @@ export function RequisitionDetailPage() {
       <Timeline
         items={req.history.map((item, i) => ({
           key: i,
-          children: `${ACTIONS[item.action] ?? item.action} · ${new Date(item.at).toLocaleString()}${item.comment ? ` · ${item.comment}` : ''}`,
+          children: (
+            <div>
+              {ACTIONS[item.action] ?? item.action} · {new Date(item.at).toLocaleString()}
+              {item.comment ? ` · ${item.comment}` : ''}
+              {Object.entries(item.changes ?? {}).map(([key, value]) => (
+                <p key={key}>
+                  {confirmationFieldLabel(key)}：{value.before || '空'} → {value.after || '空'}
+                </p>
+              ))}
+            </div>
+          ),
         }))}
       />
+      <Modal
+        title="用人经理确认"
+        open={confirming}
+        footer={null}
+        destroyOnClose
+        onCancel={() => {
+          setConfirming(false);
+          void query.refetch();
+        }}
+      >
+        <ManagerConfirmation
+          req={req}
+          onSuccess={() => {
+            setConfirming(false);
+            void qc.invalidateQueries({ queryKey: ['requisition'] });
+          }}
+        />
+      </Modal>
       <Modal
         title="驳回需求"
         open={rejecting}
@@ -141,6 +177,7 @@ const ACTIONS: Record<string, string> = {
   rejected: '驳回',
   withdrawn: '撤回',
   hc_review_added: '加签编制负责人',
+  manager_confirmed: '用人经理确认',
 };
 const FIELD_LABELS: Record<string, string> = {
   title: '职位名称',

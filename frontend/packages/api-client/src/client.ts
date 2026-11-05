@@ -57,7 +57,22 @@ export interface RequisitionDetail extends Requisition {
   currentNode: number;
   creatorId: string;
   managerId: string;
-  history: { action: string; actor_id: string; at: string; comment?: string; node_id?: string }[];
+  history: {
+    action: string;
+    actor_id: string;
+    at: string;
+    comment?: string;
+    node_id?: string;
+    changes?: Record<string, { before: string; after: string }>;
+  }[];
+}
+
+export interface ConfirmationPreview {
+  version: number;
+  fields: Record<string, string>;
+  changes: Record<string, { before: string; after: string }>;
+  checks: PrecheckItem[];
+  chain: RequisitionDetail['chain'];
 }
 
 export interface RequisitionPage {
@@ -203,6 +218,17 @@ export interface ApiClient {
   listRequisitions(): Promise<Requisition[]>;
   requisitionPage(page: number, size: number): Promise<RequisitionPage>;
   getRequisition(id: string): Promise<RequisitionDetail>;
+  previewConfirmation(
+    id: string,
+    fields: Record<string, string>,
+    version: number,
+  ): Promise<ConfirmationPreview>;
+  confirmRequisition(
+    id: string,
+    fields: Record<string, string>,
+    version: number,
+    opts: WriteOpts,
+  ): Promise<RequisitionDetail>;
   createRequisitionDraft(
     fields: Record<string, string>,
     opts: WriteOpts,

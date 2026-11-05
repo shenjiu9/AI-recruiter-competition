@@ -18,3 +18,6 @@ class Requisition:
     current_node: int = 0
     submitted_at: datetime | None = None
     hc_approver: dict | None = None
+    approval_policy: dict | None = None
+    salary_review: dict | None = None
+    submitted_fields: dict | None = None

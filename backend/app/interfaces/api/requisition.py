@@ -8,6 +8,7 @@ from app.kernel.types import Ctx, DomainError
 from app.modules.requisition.contracts import (
     ApprovalCommand,
     ApprovalNodeDTO,
+    ConfirmationPreview,
     DraftPatch,
     PrecheckItem,
     RejectionCommand,
@@ -124,6 +125,28 @@ def withdraw(request: Request, ctx: Context, req_id: str, command: VersionComman
             services,
             command.model_dump(),
             lambda: services.requisition.withdraw(ctx, req_id, command.expected_version),
+        )
+
+
+@router.post("/hr/requisitions/{req_id}/confirmation-preview", response_model=ConfirmationPreview)
+def confirmation_preview(request: Request, ctx: Context, req_id: str, command: DraftPatch):
+    with request.app.state.container.scope() as services:
+        return services.requisition.confirmation_preview(
+            ctx, req_id, command.fields, command.expected_version
+        )
+
+
+@router.post("/hr/requisitions/{req_id}/confirm", response_model=RequisitionDetail)
+def confirm(request: Request, ctx: Context, req_id: str, command: DraftPatch):
+    with request.app.state.container.scope() as services:
+        return write(
+            request,
+            ctx,
+            services,
+            command.model_dump(),
+            lambda: services.requisition.confirm(
+                ctx, req_id, command.fields, command.expected_version
+            ),
         )
 
 

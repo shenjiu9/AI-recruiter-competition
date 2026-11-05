@@ -41,8 +41,10 @@ class OrgFacade(HeadcountService):
             raise DomainError("REQ_DEPARTMENT_UNKNOWN", "部门尚未配置组织与编制数据")
         return policy
 
-    def resolve_approval_chain(self, kind: str, dept_id: str, facts: dict) -> list[ApprovalNode]:
-        policy = self.policy(dept_id)
+    def resolve_approval_chain(
+        self, kind: str, dept_id: str, facts: dict, snapshot: dict | None = None
+    ) -> list[ApprovalNode]:
+        policy = DepartmentPolicy(**snapshot) if snapshot else self.policy(dept_id)
         nodes = []
         if facts["proxy"]:
             nodes.append(("manager", "用人经理确认", policy.manager_id))

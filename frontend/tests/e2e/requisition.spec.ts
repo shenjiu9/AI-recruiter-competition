@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
 
 async function login(page: Page, user: string, base = 'http://127.0.0.1:5183') {
   await page.goto(base);
@@ -14,6 +14,145 @@ async function select(page: Page, id: string, text: string) {
   await page.locator(id).click();
   await page.locator('.ant-select-item-option-content').getByText(text, { exact: true }).click();
 }
+
+const apiRoot = 'http://127.0.0.1:8010/api/v1';
+async function apiHeaders(request: APIRequestContext, user: string) {
+  const response = await request.post(`${apiRoot}/auth/dev-login`, {
+    data: { user_id: user, password: 'e2e-only-password' },
+  });
+  expect(response.ok()).toBeTruthy();
+  return {
+    Authorization: `Bearer ${(await response.json()).token}`,
+    'Idempotency-Key': crypto.randomUUID(),
+  };
+}
+async function salesRequest(request: APIRequestContext, title: string) {
+  const response = await request.post(`${apiRoot}/hr/requisitions`, {
+    headers: await apiHeaders(request, 'hr'),
+    data: {
+      recruitType: '社招',
+      dept: '销售部 / 华南大区',
+      employmentType: '正式',
+      reqType: '新增',
+      headcount: '1',
+      title,
+      series: '销售',
+      level: 'P3',
+      city: '深圳',
+      reportTo: '周振华',
+      expectedOnboard: new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10),
+      salary: '8-12K/月×13',
+      reason: '业务扩展',
+      duties: '维护客户关系',
+      requirements: '沟通能力',
+    },
+  });
+  expect(response.status()).toBe(201);
+  return response.json();
+}
+
+test('代理修改确认：业务 H5 预检拦截、薪资加签、两端差异记录及完整审批', async ({
+  page,
+  request,
+  browser,
+}) => {
+  const req = await salesRequest(request, `代理确认-${Date.now()}`);
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const biz = await context.newPage();
+  const errors: string[] = [];
+  biz.on('pageerror', (e) => errors.push(e.message));
+  await login(biz, 'sales', 'http://127.0.0.1:5184');
+  const card = biz.locator('article').filter({ hasText: req.title });
+  await card.getByRole('button', { name: '修改并确认' }).click();
+  await biz.locator('#confirm-headcount').fill('999');
+  await expect(biz.getByText(/超出部分须填写增编申请人数/)).toBeVisible();
+  await expect(biz.getByRole('button', { name: '确认并继续审批' })).toBeDisabled();
+  await biz.locator('#confirm-headcount').fill('1');
+  await biz.locator('#confirm-salary').fill('8-25K/月×13');
+  await biz.locator('#confirm-duties').fill('维护客户并跟进合同');
+  await expect(biz.getByText(/HRD 薪资加签（薪酬审批负责人）/)).toBeVisible();
+  await biz.getByRole('button', { name: '确认并继续审批' }).click();
+  await expect(card).toHaveCount(0);
+  await login(page, 'hr');
+  await page.goto(`/requisitions/${req.id}`);
+  await expect(page.getByText('岗位职责：维护客户关系 → 维护客户并跟进合同')).toBeVisible();
+  await expect(page.getByText('薪资带宽：8-12K/月×13 → 8-25K/月×13')).toBeVisible();
+  await page.screenshot({
+    path: 'test-results/manager-confirmation-differences.png',
+    fullPage: true,
+  });
+  await login(biz, 'director', 'http://127.0.0.1:5184');
+  await card.getByRole('button', { name: '查看需求 / 驳回' }).click();
+  await expect(biz.getByText('岗位职责：维护客户关系 → 维护客户并跟进合同')).toBeVisible();
+  await expect(biz.getByText('岗位职责：维护客户关系 → 维护客户并跟进合同')).toBeInViewport();
+  await biz.screenshot({ path: 'test-results/manager-confirmation-mobile.png', fullPage: true });
+  await biz.getByRole('button', { name: '关闭详情' }).click();
+  for (const user of ['director', 'hrbp', 'salary_hrd']) {
+    if (user !== 'director') await login(biz, user, 'http://127.0.0.1:5184');
+    await card.getByRole('button', { name: '通过', exact: true }).click();
+    await expect(card).toHaveCount(0);
+  }
+  await page.reload();
+  await expect(page.getByText('需求审批已通过', { exact: true })).toBeVisible();
+  await context.close();
+  expect(errors).toEqual([]);
+});
+
+test('HR Web 确认：过期版本保留输入，响应丢失后用相同幂等键重试', async ({ page, request }) => {
+  const req = await salesRequest(request, `版本确认-${Date.now()}`);
+  await login(page, 'sales');
+  await page.goto(`/requisitions/${req.id}`);
+  await page.getByRole('button', { name: '修改并确认' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.locator('#confirm-duties').fill('本地尚未提交的职责');
+  await expect(dialog.getByRole('button', { name: '确认并继续审批' })).toBeEnabled();
+  const path = `${apiRoot}/hr/requisitions/${req.id}`;
+  const withdrawn = await request.post(`${path}/withdraw`, {
+    headers: await apiHeaders(request, 'hr'),
+    data: { expected_version: req.version },
+  });
+  expect(withdrawn.ok()).toBeTruthy();
+  const resubmitted = await request.post(`${path}/submit`, {
+    headers: await apiHeaders(request, 'hr'),
+    data: { expected_version: (await withdrawn.json()).version },
+  });
+  expect(resubmitted.ok()).toBeTruthy();
+  await dialog.getByRole('button', { name: '确认并继续审批' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('修改内容已保留');
+  await expect(dialog.locator('#confirm-duties')).toHaveValue('本地尚未提交的职责');
+  await expect(dialog.getByRole('button', { name: '确认并继续审批' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText('提交审批 ·')).toHaveCount(2);
+  await page.getByRole('button', { name: '修改并确认' }).click();
+  await dialog.locator('#confirm-reason').fill('经理确认后的招聘背景');
+  await expect(dialog.getByRole('button', { name: '确认并继续审批' })).toBeEnabled();
+  const keys: string[] = [];
+  await page.route(`**/requisitions/${req.id}/confirm`, async (route) => {
+    keys.push(route.request().headers()['idempotency-key']!);
+    const response = await route.fetch();
+    if (keys.length === 1)
+      await route.fulfill({
+        status: 503,
+        json: { error: { code: 'TEMPORARY', message: '模拟确认响应丢失' } },
+      });
+    else await route.fulfill({ response });
+  });
+  await dialog.getByRole('button', { name: '确认并继续审批' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('模拟确认响应丢失');
+  await expect(dialog.locator('#confirm-reason')).toBeDisabled();
+  await dialog.getByRole('button', { name: '重试本次确认' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText('招聘原因：业务扩展 → 经理确认后的招聘背景')).toBeVisible();
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  const result = await request.get(path, { headers: await apiHeaders(request, 'hr') });
+  expect(
+    (await result.json()).history.filter(
+      (item: { action: string }) => item.action === 'manager_confirmed',
+    ),
+  ).toHaveLength(1);
+});
 
 test('真实 API：HR 保存恢复草稿、提交、业务方驳回、重提、三级审批', async ({ page, browser }) => {
   const errors: string[] = [];

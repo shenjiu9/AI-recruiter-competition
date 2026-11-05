@@ -8,6 +8,27 @@ from app.modules.requisition.ports import Organization, Repository
 
 HR_ROLES = {"recruiter", "recruiting_lead", "hrbp"}
 WRITE_ROLES = HR_ROLES | {"hiring_manager"}
+CONFIRM_FIELDS = {
+    "recruitType",
+    "employmentType",
+    "reqType",
+    "headcount",
+    "title",
+    "series",
+    "level",
+    "city",
+    "reportTo",
+    "expectedOnboard",
+    "salary",
+    "reason",
+    "duties",
+    "requirements",
+    "hcRequest",
+    "replacementIds",
+    "positionId",
+    "country",
+    "highlights",
+}
 
 
 class RequisitionCommands:
@@ -68,7 +89,7 @@ class RequisitionCommands:
             salary_range(fields.get("salary", "")),
         )
 
-    def precheck_fields(self, ctx, fields, salary_result=None):
+    def precheck_fields(self, ctx, fields, salary_result=None, manager_id=None):
         fields = self._validate_fields(fields)
         if not fields.get("dept"):
             return [
@@ -82,7 +103,7 @@ class RequisitionCommands:
             fields,
             today,
             budget["available"] if active and not budget["frozen"] else 0,
-            self.org.get_user(policy.manager_id).name,
+            self.org.get_user(manager_id or policy.manager_id).name,
         )
         checks.extend((salary_result or self._salary_check(fields))["checks"])
         if fields.get("employmentType") == "正式":
@@ -202,7 +223,13 @@ class RequisitionCommands:
                 "REQ_PENDING_DECISIONS", "预检未通过，请处理后再提交", details={"checks": blocked}
             )
         old = self._snapshot(req)
-        req.chain = self.approval_chain(ctx, req.fields, salary_result)
+        # Routing is based on the original creator, even if the manager submits an HR draft.
+        policy = self.org.policy(req.dept)
+        req.manager_id = policy.manager_id
+        req.mode = "self" if req.creator_id == req.manager_id else "proxy"
+        req.approval_policy = asdict(policy)
+        req.salary_review = salary_result
+        req.chain = self._confirmation_chain(req, req.fields, salary_result)
         # Snapshot the exceptional final approver, too: later directory policy changes
         # must not silently redirect an in-flight request to a different approver.
         policy = self.org.policy(req.dept)
@@ -224,11 +251,104 @@ class RequisitionCommands:
                 "at": self.clock.now().isoformat(),
                 "chain": req.chain,
                 "salary_rules": salary_result["refs"],
+                "changes": {
+                    key: {"before": req.submitted_fields.get(key, ""), "after": value}
+                    for key, value in req.fields.items()
+                    if req.submitted_fields is not None
+                    and value != req.submitted_fields.get(key, "")
+                },
             }
         )
+        req.submitted_fields = dict(req.fields)
         return self._save(ctx, req, old, "requisition.submitted")
 
+    def _confirmation_chain(self, req, fields, salary_result):
+        return [
+            asdict(n)
+            for n in self.org.resolve_approval_chain(
+                "requisition",
+                req.dept,
+                {
+                    "proxy": req.mode == "proxy",
+                    "actor_id": req.creator_id,
+                    "hc_request": fields.get("hcRequest", "0") not in {"", "0"},
+                    "salary_over": salary_result["over"],
+                },
+                req.approval_policy,
+            )
+        ]
+
+    def _confirmation(self, ctx, req, patch, expected_version):
+        self._version(req, expected_version)
+        if req.status != "in_approval" or req.current_node != 0 or req.mode != "proxy":
+            raise DomainError("INVALID_TRANSITION", "仅代发起需求的首个确认节点可修改确认", 409)
+        node = req.chain[0]
+        if node["id"] != "manager" or node["approver_id"] != ctx.principal.user_id:
+            raise DomainError("FORBIDDEN", "只有当前归属用人经理可以修改确认", 403)
+        fields = self._validate_fields({**req.fields, **patch})
+        changes = {
+            k: {"before": req.fields.get(k, ""), "after": v}
+            for k, v in fields.items()
+            if v != req.fields.get(k, "")
+        }
+        if set(changes) - CONFIRM_FIELDS:
+            raise DomainError(
+                "REQ_CONFIRM_FIELD_LOCKED", "确认时不能变更部门、保密范围或负责 HR，请撤回后修改"
+            )
+        if changes and (req.approval_policy is None or req.salary_review is None):
+            raise DomainError(
+                "REQ_RESUBMIT_REQUIRED", "旧版需求缺少规则快照，请撤回后重新提交", 409
+            )
+        salary_changed = bool(set(changes) & {"salary", "series", "level", "city"})
+        salary = self._salary_check(fields) if salary_changed else req.salary_review
+        # Unedited confirmations preserve the submitted decision. Final HC is always rechecked.
+        checks = self.precheck_fields(ctx, fields, salary, req.manager_id) if changes else []
+        chain = req.chain
+        if set(changes) & {"salary", "series", "level", "city", "hcRequest"}:
+            proposed = self._confirmation_chain(req, fields, salary)
+            existing = {n["id"]: n for n in req.chain}
+            chain = [existing.get(n["id"], n) for n in proposed]
+        return {
+            "fields": fields,
+            "changes": changes,
+            "checks": checks,
+            "chain": chain,
+            "salary_rules": salary["refs"] if salary else [],
+        }, salary
+
+    def confirmation_preview(self, ctx, req_id, patch, expected_version):
+        req = self.get_entity(ctx, req_id)
+        preview, _ = self._confirmation(ctx, req, patch, expected_version)
+        return {**preview, "version": req.version}
+
+    def confirm(self, ctx, req_id, patch, expected_version, comment=None):
+        req = self.get_entity(ctx, req_id)
+        preview, salary = self._confirmation(ctx, req, patch, expected_version)
+        blocked = [c for c in preview["checks"] if c["status"] == "block"]
+        if blocked:
+            raise DomainError(
+                "REQ_PENDING_DECISIONS", "预检未通过，请处理后再确认", details={"checks": blocked}
+            )
+        old = self._snapshot(req)
+        req.fields, req.chain, req.salary_review = preview["fields"], preview["chain"], salary
+        req.current_node = 1
+        req.history.append(
+            {
+                "action": "manager_confirmed",
+                "node_id": "manager",
+                "actor_id": ctx.principal.user_id,
+                "at": self.clock.now().isoformat(),
+                "comment": comment,
+                "changes": preview["changes"],
+                "chain": req.chain,
+                "salary_rules": preview["salary_rules"],
+            }
+        )
+        return self._save(ctx, req, old, "requisition.manager_confirmed")
+
     def decide(self, ctx, req_id, node_id, expected_version, *, approve, comment):
+        if approve and node_id == "manager":
+            return self.confirm(ctx, req_id, {}, expected_version, comment)
         req = self.get_entity(ctx, req_id)
         self._version(req, expected_version)
         next_state = transition(req.status, "approve" if approve else "reject")

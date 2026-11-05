@@ -1,12 +1,16 @@
 import { Button, TextArea } from 'antd-mobile';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useApi } from '@recruiter/api-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApi, confirmationFieldLabel } from '@recruiter/api-client';
+import { useSession } from '@recruiter/auth';
+import { ManagerConfirmation } from './ManagerConfirmation';
 import { qk } from '@recruiter/domain';
 import { useWrite } from '../../shared/useWrite';
 
 export function RequisitionReview({ id, onClose }: { id: string; onClose: () => void }) {
   const api = useApi();
+  const session = useSession();
+  const qc = useQueryClient();
   const detail = useQuery({
     queryKey: ['biz', 'requisition', id],
     queryFn: () => api.getRequisition(id),
@@ -41,6 +45,30 @@ export function RequisitionReview({ id, onClose }: { id: string; onClose: () => 
           <p>薪资带宽：{req.fields.salary}</p>
           <p>岗位职责：{req.fields.duties}</p>
           <p>任职资格：{req.fields.requirements}</p>
+          {req.history
+            .filter((item) => item.action === 'manager_confirmed')
+            .map((item, index) => (
+              <div key={index}>
+                <h3>用人经理确认 · {new Date(item.at).toLocaleString()}</h3>
+                {Object.entries(item.changes ?? {}).map(([key, value]) => (
+                  <p key={key}>
+                    {confirmationFieldLabel(key)}：{value.before || '空'} → {value.after || '空'}
+                  </p>
+                ))}
+              </div>
+            ))}
+          {req.status === 'in_approval' &&
+            req.chain[req.currentNode]?.id === 'manager' &&
+            req.chain[req.currentNode]?.approver_id === session?.userId && (
+              <ManagerConfirmation
+                req={req}
+                onSuccess={() => {
+                  void qc.invalidateQueries({ queryKey: qk.biz.inbox() });
+                  void qc.invalidateQueries({ queryKey: ['biz', 'requisition', id] });
+                  onClose();
+                }}
+              />
+            )}
           <label htmlFor="biz-reject-reason">驳回原因（必填）</label>
           <TextArea
             id="biz-reject-reason"

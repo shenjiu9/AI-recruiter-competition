@@ -18,6 +18,9 @@ class SqlRepository:
             "chain": req.chain,
             "history": req.history,
             "hc_approver": req.hc_approver,
+            "approval_policy": req.approval_policy,
+            "salary_review": req.salary_review,
+            "submitted_fields": req.submitted_fields,
             "current_node": req.current_node,
             "submitted_at": req.submitted_at.isoformat() if req.submitted_at else None,
         }
