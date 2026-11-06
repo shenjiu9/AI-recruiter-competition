@@ -1,0 +1,8 @@
+services:
+  api:
+    networks: [default, recruiter_internal]
+
+networks:
+  recruiter_internal:
+    name: recruiter-dify-link
+    external: true

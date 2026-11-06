@@ -196,22 +196,24 @@ export function Shell() {
               if (q.trim()) nav(`/candidates?${key}=${encodeURIComponent(q.trim())}`);
             }}
           />
-          {!compact && <Input
-            className="app-command"
-            prefix={<ThunderboltOutlined />}
-            placeholder="让 AI 做件事…"
-            aria-label="AI 指令栏"
-            ref={commandRef}
-            value={command}
-            maxLength={4000}
-            onChange={(e) => setCommand(e.target.value)}
-            onPressEnter={(e) => {
-              if (!e.nativeEvent.isComposing) sendCommand();
-            }}
-            autoComplete="off"
-            suffix={<kbd>⌘ K</kbd>}
-            style={{ maxWidth: 300, minWidth: 160 }}
-          />}
+          {!compact && (
+            <Input
+              className="app-command"
+              prefix={<ThunderboltOutlined />}
+              placeholder="让 AI 做件事…"
+              aria-label="AI 指令栏"
+              ref={commandRef}
+              value={command}
+              maxLength={4000}
+              onChange={(e) => setCommand(e.target.value)}
+              onPressEnter={(e) => {
+                if (!e.nativeEvent.isComposing) sendCommand();
+              }}
+              autoComplete="off"
+              suffix={<kbd>⌘ K</kbd>}
+              style={{ maxWidth: 300, minWidth: 160 }}
+            />
+          )}
           <Button
             className="app-ai-entry"
             aria-label="AI 助手"

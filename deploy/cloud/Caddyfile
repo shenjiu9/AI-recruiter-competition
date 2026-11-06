@@ -1,0 +1,42 @@
+{
+    admin localhost:2019
+}
+
+(recruiter_headers) {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+}
+
+hr.45-76-191-78.sslip.io {
+    import recruiter_headers
+    reverse_proxy 127.0.0.1:5173 {
+        flush_interval -1
+    }
+}
+biz.45-76-191-78.sslip.io {
+    import recruiter_headers
+    reverse_proxy 127.0.0.1:5174 {
+        flush_interval -1
+    }
+}
+candidate.45-76-191-78.sslip.io {
+    import recruiter_headers
+    reverse_proxy 127.0.0.1:5175 {
+        flush_interval -1
+    }
+}
+dify.45-76-191-78.sslip.io {
+    import recruiter_headers
+    reverse_proxy 127.0.0.1:8080 {
+        flush_interval -1
+    }
+}
+
+http://45.76.191.78 {
+    redir https://hr.45-76-191-78.sslip.io{uri} 308
+}

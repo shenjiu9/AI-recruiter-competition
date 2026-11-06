@@ -321,7 +321,10 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
                     ? '确认已阅建议'
                     : '确认并执行'}
                 </ActionButton>
-                <ActionButton disabled={op.locked || !reason.trim()} onClick={() => submit('reject')}>
+                <ActionButton
+                  disabled={op.locked || !reason.trim()}
+                  onClick={() => submit('reject')}
+                >
                   不采纳
                 </ActionButton>
               </>
@@ -435,7 +438,9 @@ function AskPanel({ initial, onStarted }: { initial?: string; onStarted: (job: A
           }}
         />
       </label>
-      <ActionButton disabled={busy || !text.trim()}>{ask.busy ? 'AI 正在理解…' : '交给 AI'}</ActionButton>
+      <ActionButton disabled={busy || !text.trim()}>
+        {ask.busy ? 'AI 正在理解…' : '交给 AI'}
+      </ActionButton>
       {(!result || result.status === 'unsupported') && (
         <p style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           可以这样说：
@@ -513,7 +518,8 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
   );
   const configured = health.data?.components[component] && health.data?.enabled[component];
   return (
-    <main className="rc-ai-workspace"><span className="rc-eyebrow">AI STUDIO · 人机协作</span>
+    <main className="rc-ai-workspace">
+      <span className="rc-eyebrow">AI STUDIO · 人机协作</span>
       <h1>AI 任务与复核</h1>
       <p>生成建议后核对原文。影子模式只记录结果；录用决定和面试评分由对应负责人完成。</p>
       {health.error && <p role="alert">{health.error}</p>}
@@ -585,7 +591,9 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
               onChange={(e) => setPrompt(e.target.value)}
             />
           </label>
-          <ActionButton type="submit" disabled={start.locked || !configured || !objectId.trim()}>创建 AI 任务</ActionButton>
+          <ActionButton type="submit" disabled={start.locked || !configured || !objectId.trim()}>
+            创建 AI 任务
+          </ActionButton>
           {start.error && <p role="alert">{start.error}</p>}
           {start.retry && (
             <ActionButton type="button" onClick={start.retryAction} disabled={start.busy}>
@@ -622,7 +630,10 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
         上一页
       </ActionButton>{' '}
       第 {page} 页{' '}
-      <ActionButton disabled={page * 20 >= (jobs.data?.total ?? 0)} onClick={() => setPage(page + 1)}>
+      <ActionButton
+        disabled={page * 20 >= (jobs.data?.total ?? 0)}
+        onClick={() => setPage(page + 1)}
+      >
         下一页
       </ActionButton>
     </main>
