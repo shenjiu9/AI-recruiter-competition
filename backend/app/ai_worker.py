@@ -8,6 +8,50 @@ from app.engine.validation import validate
 from app.kernel.types import DomainError
 
 
+def reasons_of(rejected):
+    if isinstance(rejected, DomainError):
+        return list(rejected.details.get("reasons") or [rejected.code])
+    return ["schema_invalid"]
+
+
+def generate(gateway, job, runs):
+    """Call the model and return validated output, recording run metadata in runs.
+
+    A5 takes three independent samples; a malformed sample counts as "invalid" and
+    lowers confidence instead of failing the job. Every other component gets one
+    bounded rewrite carrying only rule codes (never raw errors or rejected text);
+    the rewrite must pass the same validation.
+    """
+    component, inputs = job["component"], job["inputs"]
+    if component == "A5":
+        samples = []
+        for sample in range(3):
+            try:
+                result = gateway.call(component, inputs, job["id"], sample)
+            except DomainError as exc:
+                if exc.code != "AI_OUTPUT_REJECTED":
+                    raise
+                samples.append(None)
+                runs.append({"kind": "invalid", "reasons": reasons_of(exc)})
+                continue
+            samples.append(result.pop("output"))
+            runs.append(result)
+        return validate(component, samples, inputs)
+    reasons = None
+    while True:
+        try:
+            result = gateway.call(component, inputs, job["id"], retry_reason=reasons)
+            candidate = result.pop("output")
+            runs.append({**result, "kind": "rewrite", "reasons": reasons} if reasons else result)
+            return validate(component, [candidate], inputs)
+        except (DomainError, ValueError, TypeError, KeyError) as rejected:
+            if reasons is not None or (
+                isinstance(rejected, DomainError) and rejected.code != "AI_OUTPUT_REJECTED"
+            ):
+                raise
+            reasons = reasons_of(rejected)
+
+
 def run_once(container, queue="batch"):
     with container.scope() as s:
         if container.settings.ai_worker_enabled:
@@ -17,28 +61,9 @@ def run_once(container, queue="batch"):
         job = s.engine.claim(queue)
     if job is None:
         return False
-    runs, samples, output, error = [], [], None, None
+    runs, output, error = [], None, None
     try:
-        for sample in range(3 if job["component"] == "A5" else 1):
-            result = container.ai_gateway.call(job["component"], job["inputs"], job["id"], sample)
-            samples.append(result.pop("output"))
-            runs.append(result)
-        try:
-            output = validate(job["component"], samples, job["inputs"])
-        except (DomainError, ValueError, TypeError, KeyError) as rejected:
-            if job["component"] != "A4":
-                raise
-            reasons = (
-                rejected.details.get("reasons", [rejected.code])
-                if isinstance(rejected, DomainError)
-                else ["schema_invalid"]
-            )
-            # One bounded rewrite using rule codes, never raw validation errors
-            # or untrusted rejected text. The second answer must pass all rules.
-            result = container.ai_gateway.call("A4", job["inputs"], job["id"], retry_reason=reasons)
-            replacement = result.pop("output")
-            runs.append({**result, "kind": "rewrite", "reasons": reasons})
-            output = validate("A4", [replacement], job["inputs"])
+        output = generate(container.ai_gateway, job, runs)
     except DomainError as exc:
         error = exc.code
     except (ValueError, TypeError, KeyError):

@@ -288,6 +288,58 @@ class ApplicationFacade:
             },
         }
 
+    def insight_metrics(self, pid, stale_days=7):
+        """Aggregate, identity-free pipeline facts for one position (A7 sources).
+
+        Day granularity keeps the AI context stable within a day.
+        """
+        apps = [a for a in self.store.all() if a["position_id"] == pid]
+        today = self.clock.now().date()
+
+        def days(value):
+            return max(0, (today - datetime.fromisoformat(value).date()).days)
+
+        reached = {
+            stage: sum(STAGES.index(a["furthest_stage"]) >= STAGES.index(stage) for a in apps)
+            for stage in STAGES
+        }
+        active = [a for a in apps if not a["outcome"]]
+        idle = {
+            a["id"]: days(a["history"][-1]["at"] if a["history"] else a["started_at"])
+            for a in active
+            if a["stage"] != "hired"
+        }
+        ended = [a for a in apps if a["outcome"]]
+        return {
+            "total": len(apps),
+            "active": len(active),
+            "stages": {s: sum(a["stage"] == s for a in active) for s in STAGES},
+            "reached": reached,
+            "outcomes": {
+                o: sum(a["outcome"] == o for a in ended)
+                for o in sorted({a["outcome"] for a in ended})
+            },
+            "ended_at_stage": {
+                s: sum((a["outcome_stage"] or a["stage"]) == s for a in ended) for s in STAGES
+            },
+            "reasons": {
+                r: sum(a["reason_code"] == r for a in ended if a["outcome"] == "rejected")
+                for r in sorted({a["reason_code"] for a in ended if a["outcome"] == "rejected"})
+                if r
+            },
+            "sources": {
+                src: sum(a["source"] == src for a in apps)
+                for src in sorted({a["source"] for a in apps})
+            },
+            "idle_days": sorted(idle.values()),
+            "stale": {
+                s: sum(1 for a in active if a["stage"] == s and idle.get(a["id"], 0) >= stale_days)
+                for s in STAGES
+            },
+            "stale_days": stale_days,
+            "today": today.isoformat(),
+        }
+
     def close_position(self, ctx, pid):
         for app in self.store.all():
             if app["position_id"] == pid and not app["outcome"] and app["stage"] != "hired":

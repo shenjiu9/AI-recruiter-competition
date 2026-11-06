@@ -53,7 +53,11 @@ def contexts():
         "A7": {
             "position": position,
             "prompt": "说明当前招聘进度",
-            "sources": {"headcount": "计划2，已录用0", "position_counts": "在途候选人3"},
+            "sources": {
+                "headcount": "计划招聘 2 人，已录用 0 人，剩余名额 2 人。",
+                "funnel": "累计应聘 5 人，当前在途 3 人。各阶段在途人数：触达 1 人，沟通中 1 人，AI 评估 1 人。",
+                "conversion": "累计进入各阶段人数（含已结束）：触达 5 人，沟通中 3 人，AI 评估 1 人。阶段转化率：触达→沟通中 60%，沟通中→AI 评估 33.3%，AI 评估→面试 0%。",
+            },
         },
     }
 
