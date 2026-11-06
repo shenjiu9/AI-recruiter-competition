@@ -37,22 +37,35 @@ export function RequisitionNotices({ onOpen }: { onOpen: (id: string) => void })
       window.removeEventListener('focus', refresh);
     };
   }, [api]);
+  // 没有消息时不占位置：每个页面顶部都挂着“（0）”只会分散注意力
+  if (!items.length && !error) return null;
   return (
-    <details style={{ marginBottom: 16, padding: 12 }}>
-      <summary>审批与交接消息（{items.length}）</summary>
-      {error && <p role="alert">消息加载失败：{error}</p>}
-      {!items.length && !error && <p>暂无消息</p>}
-      {!!items.length && <p>显示最近 100 条消息。</p>}
-      <ul>
-        {items.map((item) => (
-          <li key={item.id}>
-            <button type="button" onClick={() => onOpen(item.requisition_id)}>
-              {TRANSFER_ACTIONS[item.action] ?? item.action} · {item.title}
-            </button>{' '}
-            · {new Date(item.at).toLocaleString()}
-          </li>
-        ))}
-      </ul>
+    <details className="rc-notices">
+      <summary>
+        {!!items.length && <span className="dot" aria-hidden />}
+        审批与交接消息（{items.length}）
+      </summary>
+      <div className="body">
+        {error && <p role="alert">消息加载失败：{error}。稍后会自动重试。</p>}
+        {!!items.length && <p style={{ margin: '4px 0 0' }}>显示最近 100 条消息。</p>}
+        <ul>
+          {items.map((item) => (
+            <li key={item.id}>
+              <button type="button" onClick={() => onOpen(item.requisition_id)}>
+                {TRANSFER_ACTIONS[item.action] ?? item.action} · {item.title}
+              </button>
+              <time dateTime={item.at}>{timeFormat.format(new Date(item.at))}</time>
+            </li>
+          ))}
+        </ul>
+      </div>
     </details>
   );
 }
+
+const timeFormat = new Intl.DateTimeFormat('zh-CN', {
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});

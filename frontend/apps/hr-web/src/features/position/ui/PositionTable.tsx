@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { POSITION_STATUS_LABEL, formatDate, type Position } from '@recruiter/domain';
 import { HealthTag } from '@recruiter/ui-kit';
 
+const POSITION_TONE = { to_publish: 'muted', open: 'active', paused: 'warn', closed: 'muted' } as const;
+
 export function PositionTable({ rows, loading }: { rows: Position[]; loading: boolean }) {
   return (
     <Table<Position>
@@ -24,7 +26,15 @@ export function PositionTable({ rows, loading }: { rows: Position[]; loading: bo
             </div>
           ),
         },
-        { title: '状态', render: (_, p) => POSITION_STATUS_LABEL[p.status], width: 90 },
+        {
+          title: '状态',
+          width: 100,
+          render: (_, p) => (
+            <span className="rc-status" data-tone={POSITION_TONE[p.status]}>
+              {POSITION_STATUS_LABEL[p.status]}
+            </span>
+          ),
+        },
         {
           title: '可招',
           align: 'right',
@@ -39,8 +49,8 @@ export function PositionTable({ rows, loading }: { rows: Position[]; loading: bo
         { title: '负责 HR', dataIndex: 'ownerHr', width: 90 },
         {
           title: '期望到岗',
-          width: 110,
-          render: (_, p) => <span className="num">{formatDate(p.expectedOnboard)}</span>,
+          width: 120,
+          render: (_, p) => <span className="num rc-nowrap">{formatDate(p.expectedOnboard)}</span>,
         },
       ]}
     />

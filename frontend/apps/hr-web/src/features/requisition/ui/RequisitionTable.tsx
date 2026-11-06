@@ -5,6 +5,14 @@ import { useApi } from '@recruiter/api-client';
 import { POSITION_STATUS_LABEL } from '@recruiter/domain';
 import { REQ_STATUS_LABEL, REQ_TYPE_LABEL, formatDate, type Requisition } from '@recruiter/domain';
 
+const REQ_TONE = {
+  draft: 'muted',
+  in_approval: 'active',
+  approved: 'ok',
+  rejected: 'bad',
+  withdrawn: 'muted',
+} as const;
+
 const MODE = { self: '本人发起', proxy: '代发起', ai_draft: 'AI 起草' } as const;
 
 function GeneratedPosition({ reqId }: { reqId: string }) {
@@ -89,7 +97,14 @@ export function RequisitionTable({
             </span>
           ),
         },
-        { title: '状态', render: (_, r) => REQ_STATUS_LABEL[r.status] },
+        {
+          title: '状态',
+          render: (_, r) => (
+            <span className="rc-status" data-tone={REQ_TONE[r.status]}>
+              {REQ_STATUS_LABEL[r.status]}
+            </span>
+          ),
+        },
         { title: '当前在等', render: (_, r) => waiting(r) },
         {
           title: '生成的岗位',

@@ -1,6 +1,5 @@
-import type React from 'react';
 import { useState } from 'react';
-import { Button, Dialog, Popup, Space } from 'antd-mobile';
+import { Button, Dialog, Popup } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 import { formatDue } from '@recruiter/domain';
 import type { BizInboxItem } from '@recruiter/api-client';
@@ -39,42 +38,26 @@ export function InboxList({ items }: { items: BizInboxItem[] }) {
         const due = formatDue(it.dueAt);
         return (
           <article key={it.id} className="rm-card" aria-labelledby={`t-${it.id}`}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 12,
-                color: 'var(--rm-ink-3)',
-                marginBottom: 6,
-              }}
-            >
+            <div className="rm-card-meta">
               <span>{KIND[it.kind]}</span>
-              <span style={{ color: due.urgent ? 'var(--adm-color-warning)' : undefined }}>
+              <span data-urgent={due.urgent || due.overdue}>
                 {due.overdue ? '已超时' : `${due.text} 前`}
               </span>
             </div>
             <h2 id={`t-${it.id}`}>{it.title}</h2>
             <div className="rm-sub">{it.detail}</div>
             {it.done ? (
-              <div style={{ marginTop: 12, color: 'var(--adm-color-success)' }}>
+              <div className="rm-done" role="status">
                 已处理：{it.done}
               </div>
             ) : (
-              <Space
-                block
-                direction="vertical"
-                style={{ marginTop: 12, '--gap': '8px' } as React.CSSProperties}
-              >
+              <div className="rm-actions">
                 {it.kind === 'recommendation' && (
                   <>
                     <Button block color="primary" size="large" onClick={() => doAct(it, '想见')}>
                       想见，安排复试
                     </Button>
-                    <Space
-                      block
-                      style={{ '--gap': '8px' } as React.CSSProperties}
-                      justify="between"
-                    >
+                    <div className="rm-actions-pair">
                       <Button size="large" onClick={() => nav(`/brief/${it.applicationId}`)}>
                         看推荐理由
                       </Button>
@@ -91,7 +74,7 @@ export function InboxList({ items }: { items: BizInboxItem[] }) {
                       >
                         不合适
                       </Button>
-                    </Space>
+                    </div>
                   </>
                 )}
                 {it.kind === 'requisition_approval' && (
@@ -125,7 +108,7 @@ export function InboxList({ items }: { items: BizInboxItem[] }) {
                     写面评
                   </Button>
                 )}
-              </Space>
+              </div>
             )}
           </article>
         );
