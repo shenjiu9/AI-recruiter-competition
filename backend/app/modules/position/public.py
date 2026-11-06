@@ -19,6 +19,7 @@ class Requisitions(Protocol):
 
 class PositionFacade(PositionContent):
     def __init__(self, store, requisitions: Requisitions, org, clock, journal, calendar=None):
+        self.applications = None
         self.calendar = calendar or WorkCalendar()
         self.store, self.requisitions, self.org, self.clock, self.journal = (
             store,
@@ -90,7 +91,10 @@ class PositionFacade(PositionContent):
             "hiringManager": self._name(pos["manager_id"]),
             "managerId": pos["manager_id"],
             "planned": sum(s["count"] for s in pos["sources"]),
-            "hired": 0,
+            "hired": self.applications.counts(pos["id"])["hired"] if self.applications else 0,
+            "candidateCounts": self.applications.counts(pos["id"])
+            if self.applications
+            else {"total": 0, "active": 0, "hired": 0, "stages": {}},
             "expectedOnboard": pos["fields"]["expectedOnboard"],
             "confidential": pos["confidential"],
             "requisitionIds": [s["id"] for s in pos["sources"]],
@@ -128,6 +132,22 @@ class PositionFacade(PositionContent):
 
     def get(self, ctx, pos_id):
         return self.dto(ctx, self._get(ctx, pos_id))
+
+    def application_context(self, ctx, pos_id):
+        pos = self._get(ctx, pos_id)
+        pause = next(
+            (
+                h.get("handling", "continue")
+                for h in reversed(pos["history"])
+                if h["action"] == "pause"
+            ),
+            "continue",
+        )
+        return {
+            **self.dto(ctx, pos),
+            "series": pos["fields"].get("series", ""),
+            "pause_mode": pause,
+        }
 
     def search(
         self, ctx, page, size, status=None, view="all", query="", dept="", owner="", city=""

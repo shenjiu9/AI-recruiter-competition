@@ -9,11 +9,52 @@ interface Route {
   opts?: WriteOpts;
   token?: string;
   unwrapItems?: boolean;
+  binary?: boolean;
 }
 type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => Route };
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  candidatePage: (page, filters = {}) => ({
+    method: 'GET',
+    path: `/hr/candidates?page=${page}&size=20&${new URLSearchParams(filters)}`,
+  }),
+  candidateRecord: (id) => ({ method: 'GET', path: `/hr/candidates/${enc(id)}` }),
+  createCandidateRecord: (profile, opts) => ({
+    method: 'POST',
+    path: '/hr/candidates',
+    body: { profile },
+    opts,
+  }),
+  candidateRecordCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/candidates/${enc(id)}/actions`,
+    body,
+    opts,
+  }),
+  revealCandidateContacts: (id) => ({ method: 'POST', path: `/hr/candidates/${enc(id)}/contacts` }),
+  uploadCandidateResume: (file, cid, opts) => ({
+    method: 'POST',
+    path: `/hr/candidate-resumes?filename=${enc(file.name)}${cid ? `&candidate_id=${enc(cid)}` : ''}`,
+    body: file,
+    opts,
+  }),
+  downloadCandidateResume: (id, rid) => ({
+    method: 'GET',
+    path: `/hr/candidates/${enc(id)}/resumes/${enc(rid)}/file`,
+    binary: true,
+  }),
+  attachCandidate: (body, opts) => ({ method: 'POST', path: '/hr/applications', body, opts }),
+  livePositionApplications: (id) => ({
+    method: 'GET',
+    path: `/hr/positions/${enc(id)}/applications`,
+  }),
+  liveApplicationCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/applications/${enc(id)}/actions`,
+    body,
+    opts,
+  }),
   positionPage: (page, status, filters = {}) => ({
     method: 'GET',
     path: `/hr/positions?page=${page}&size=20${status ? `&status=${enc(status)}` : ''}&${new URLSearchParams(filters)}`,
@@ -290,7 +331,10 @@ const routes: Routes = {
 
 export function createHttpClient(config: ApiConfig): ApiClient {
   async function call(r: Route): Promise<unknown> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const raw = r.body instanceof Blob;
+    const headers: Record<string, string> = {
+      'Content-Type': raw ? 'application/octet-stream' : 'application/json',
+    };
     const token = r.token ?? config.getToken?.();
     if (token) headers.Authorization = `Bearer ${token}`;
     if (r.method !== 'GET')
@@ -298,9 +342,10 @@ export function createHttpClient(config: ApiConfig): ApiClient {
     const res = await fetch(`${config.baseUrl}/api/v1${r.path}`, {
       method: r.method,
       headers,
-      body: r.body === undefined ? undefined : JSON.stringify(r.body),
+      body: raw ? (r.body as Blob) : r.body === undefined ? undefined : JSON.stringify(r.body),
       credentials: 'include',
     });
+    if (r.binary && res.ok) return res.blob();
     const text = await res.text();
     let json: unknown = null;
     try {

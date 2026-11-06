@@ -24,6 +24,7 @@ import {
 import { DirectoryPersonPicker } from '@recruiter/ui-kit/directory-person-picker';
 import { POSITION_STATUS_LABEL } from '@recruiter/domain';
 import { PositionContentPanels, ExtendedPositionForm } from './PositionContentPanels';
+import { LivePositionCandidates } from '../../../shared/LiveApplications';
 
 const ACTIONS: Record<string, string> = {
   assign: '指定负责 HR',
@@ -447,6 +448,7 @@ export function LivePositionDetail() {
         pos={pos}
         onAction={(action, patch) => setEditing({ pos, action, patch })}
       />
+      <LivePositionCandidates positionId={pos.id} canEdit={pos.canEdit && pos.status === 'open'} />
       <h2>操作记录</h2>
       <Timeline
         items={pos.history.map((h, i) => ({

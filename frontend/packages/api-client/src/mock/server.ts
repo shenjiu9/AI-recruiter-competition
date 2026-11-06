@@ -53,6 +53,16 @@ export function createMockClient(): ApiClient {
     throw new AppError('BACKEND_REQUIRED', '此操作需要切换到真实 API 模式', 501);
   };
   return {
+    candidatePage: backendOnly,
+    candidateRecord: backendOnly,
+    createCandidateRecord: backendOnly,
+    candidateRecordCommand: backendOnly,
+    revealCandidateContacts: backendOnly,
+    uploadCandidateResume: backendOnly,
+    downloadCandidateResume: backendOnly,
+    attachCandidate: backendOnly,
+    livePositionApplications: backendOnly,
+    liveApplicationCommand: backendOnly,
     positionPage: backendOnly,
     positionKnowledgePreview: backendOnly,
     positionDetail: backendOnly,

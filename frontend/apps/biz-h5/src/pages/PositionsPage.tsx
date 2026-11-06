@@ -10,6 +10,7 @@ import {
   type LivePosition,
 } from '@recruiter/api-client';
 import { POSITION_STATUS_LABEL } from '@recruiter/domain';
+import { PositionCandidates } from './PositionCandidates';
 
 export function PositionsPage() {
   const api = useApi();
@@ -319,6 +320,7 @@ export function PositionReviewPage() {
           </>
         )}
       </div>
+      {p && <PositionCandidates id={p.id} />}
       {p && p.status !== 'closed' && (
         <Decision
           key={`${p.version}-${revision}`}

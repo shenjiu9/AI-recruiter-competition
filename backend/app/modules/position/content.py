@@ -323,6 +323,8 @@ class PositionContent:
         if pos["status"] not in {"open", "paused"}:
             raise DomainError("INVALID_TRANSITION", "只能关闭招聘中或已暂停岗位", 409)
         self._close_reason(reason)
+        if self.applications:
+            self.applications.close_position(ctx, pos["id"])
         for source in sorted(pos["sources"], key=lambda s: s["id"]):
             self.org.release_headcount(ctx, source["id"])
         pos["status"] = "closed"

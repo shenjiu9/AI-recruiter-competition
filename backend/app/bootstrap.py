@@ -2,6 +2,10 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 from app.kernel.types import SystemClock
+from app.modules.application.adapters.repository import SqlApplications
+from app.modules.application.public import ApplicationFacade
+from app.modules.candidate.adapters.repository import SqlCandidates
+from app.modules.candidate.public import CandidateFacade
 from app.modules.org.adapters.configuration import SqlConfiguration
 from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
@@ -46,16 +50,34 @@ class Container:
                 SqlJournal(session, self.clock),
                 SqlTransfers(session),
             )
+            position = PositionFacade(
+                SqlPositions(session, self.crypto),
+                requisition,
+                org,
+                self.clock,
+                SqlJournal(session, self.clock),
+                WorkCalendar(self.settings.position_holidays, self.settings.position_workdays),
+            )
+            candidate = CandidateFacade(
+                SqlCandidates(session, self.crypto, self.settings.encryption_key),
+                org,
+                self.clock,
+                SqlJournal(session, self.clock),
+            )
+            application = ApplicationFacade(
+                SqlApplications(session, self.crypto),
+                candidate,
+                position,
+                self.clock,
+                SqlJournal(session, self.clock),
+            )
+            candidate.applications = application
+            position.applications = application
             yield SimpleNamespace(
                 session=session,
-                position=PositionFacade(
-                    SqlPositions(session, self.crypto),
-                    requisition,
-                    org,
-                    self.clock,
-                    SqlJournal(session, self.clock),
-                    WorkCalendar(self.settings.position_holidays, self.settings.position_workdays),
-                ),
+                position=position,
+                candidate=candidate,
+                application=application,
                 org=org,
                 auth=Auth(self.settings, self.clock, org),
                 requisition=requisition,

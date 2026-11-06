@@ -1,4 +1,14 @@
 import type {
+  LiveCandidate,
+  CandidateProfile,
+  CandidateCommand,
+  IngestResult,
+  AttachCommand,
+  LiveApplication,
+  ApplicationCommand,
+} from './candidate-contracts';
+export type * from './candidate-contracts';
+import type {
   AiActivity,
   Anomaly,
   Application,
@@ -206,6 +216,31 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  candidatePage(
+    page: number,
+    filters?: Record<string, string>,
+  ): Promise<{ items: LiveCandidate[]; total: number }>;
+  candidateRecord(id: string): Promise<LiveCandidate>;
+  createCandidateRecord(profile: CandidateProfile, opts: WriteOpts): Promise<IngestResult>;
+  candidateRecordCommand(
+    id: string,
+    body: CandidateCommand,
+    opts: WriteOpts,
+  ): Promise<LiveCandidate | { deleted: true }>;
+  revealCandidateContacts(id: string): Promise<{ phone: string; email: string }>;
+  uploadCandidateResume(
+    file: File,
+    candidateId: string | undefined,
+    opts: WriteOpts,
+  ): Promise<IngestResult>;
+  downloadCandidateResume(id: string, resumeId: string): Promise<Blob>;
+  attachCandidate(body: AttachCommand, opts: WriteOpts): Promise<LiveApplication>;
+  livePositionApplications(id: string): Promise<LiveApplication[]>;
+  liveApplicationCommand(
+    id: string,
+    body: ApplicationCommand,
+    opts: WriteOpts,
+  ): Promise<LiveApplication>;
   positionPage(
     page: number,
     status?: string,
@@ -429,6 +464,7 @@ export interface ApiConfig {
 }
 
 export interface LivePosition {
+  candidateCounts: { total: number; active: number; hired: number; stages: Record<string, number> };
   id: string;
   version: number;
   name: string;
