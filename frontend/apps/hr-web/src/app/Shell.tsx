@@ -1,152 +1,223 @@
 import {
+  AuditOutlined,
   BellOutlined,
   CalendarOutlined,
+  ClusterOutlined,
+  ControlOutlined,
   FileAddOutlined,
   FundOutlined,
   InboxOutlined,
-  SettingOutlined,
+  MenuOutlined,
+  MoneyCollectOutlined,
+  RobotOutlined,
   ShareAltOutlined,
   SolutionOutlined,
   TeamOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Badge, Input, Layout, Menu } from 'antd';
+import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, type MenuProps } from 'antd';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '@recruiter/api-client';
 import { useSession } from '@recruiter/auth';
 import { qk } from '@recruiter/domain';
-import { Can } from '@recruiter/permissions';
+import { usePermission } from '@recruiter/permissions';
 import { DegradeBanner, RequisitionNotices } from '@recruiter/ui-kit';
+import { useMediaQuery } from '../shared/useMediaQuery';
 
 const { Header, Sider, Content } = Layout;
+
+type MenuItem = Required<MenuProps>['items'][number];
+
+/** 二期模块：保留入口但标明状态，不让人点进去才发现是空的 */
+function Later({ children }: { children: string }) {
+  return (
+    <span className="hr-nav-label">
+      {children}
+      <span className="hr-nav-later">二期</span>
+    </span>
+  );
+}
 
 export function Shell() {
   const api = useApi();
   const nav = useNavigate();
   const loc = useLocation();
   const session = useSession();
+  const canAutomation = usePermission('settings.automation');
+  const compact = !useMediaQuery('(min-width: 992px)');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: summary } = useQuery({
     queryKey: qk.workbench.summary(),
     queryFn: () => api.workbenchSummary(),
     enabled: import.meta.env.VITE_USE_MOCK !== 'false',
   });
-  const selected = '/' + (loc.pathname.split('/')[1] ?? 'workbench');
 
-  const items = [
+  useEffect(() => setDrawerOpen(false), [loc.pathname]);
+
+  const first = '/' + (loc.pathname.split('/')[1] || 'workbench');
+  const selected = first === '/settings' ? loc.pathname : first;
+  const roles = session?.roles ?? [];
+  const hasRole = (...want: string[]) => roles.some((role) => want.includes(role));
+
+  const settings: MenuItem[] = [
+    canAutomation && {
+      key: '/settings/automation',
+      icon: <ControlOutlined />,
+      label: '自动化策略',
+    },
+    hasRole('hrbp', 'headcount_owner') && {
+      key: '/settings/headcount',
+      icon: <AuditOutlined />,
+      label: '编制管理',
+    },
+    hasRole('admin', 'recruiting_lead') && {
+      key: '/settings/organization',
+      icon: <ClusterOutlined />,
+      label: '组织与权限',
+    },
+    hasRole('recruiting_lead', 'compensation_owner') && {
+      key: '/settings/salary',
+      icon: <MoneyCollectOutlined />,
+      label: '职级薪资表',
+    },
+  ].filter(Boolean) as MenuItem[];
+
+  const pending = summary?.pendingDecisions;
+  const items: MenuItem[] = [
     {
       key: '/workbench',
       icon: <InboxOutlined />,
       label: (
-        <span style={{ display: 'flex' }}>
+        <span className="hr-nav-label">
           AI 工作台
-          <span style={{ marginLeft: 'auto', fontSize: 12 }}>
-            {summary?.pendingDecisions ?? ''}
-          </span>
+          {!!pending && (
+            <span className="hr-nav-count" aria-label={`${pending} 件待决策`}>
+              {pending}
+            </span>
+          )}
         </span>
       ),
     },
-    { key: '/requisitions', icon: <FileAddOutlined />, label: '招聘需求管理' },
-    { key: '/positions', icon: <SolutionOutlined />, label: '岗位管理' },
-    { key: '/candidates', icon: <TeamOutlined />, label: '候选人' },
-    { key: '/interviews', icon: <CalendarOutlined />, label: '面试' },
-    { key: '/hiring', icon: <SolutionOutlined />, label: '录用与移交' },
-    { key: '/ai-jobs', icon: <SolutionOutlined />, label: 'AI 任务与复核' },
-    { key: '/channels', icon: <ShareAltOutlined />, label: '渠道' },
-    { key: '/insights', icon: <FundOutlined />, label: '数据洞察' },
+    {
+      type: 'group',
+      label: '招聘流程',
+      children: [
+        { key: '/requisitions', icon: <FileAddOutlined />, label: '招聘需求管理' },
+        { key: '/positions', icon: <SolutionOutlined />, label: '岗位管理' },
+        { key: '/candidates', icon: <TeamOutlined />, label: '候选人' },
+        { key: '/interviews', icon: <CalendarOutlined />, label: '面试' },
+        { key: '/hiring', icon: <TrophyOutlined />, label: '录用与移交' },
+        { key: '/ai-jobs', icon: <RobotOutlined />, label: 'AI 任务与复核' },
+      ],
+    },
+    {
+      type: 'group',
+      label: '更多',
+      children: [
+        { key: '/channels', icon: <ShareAltOutlined />, label: <Later>渠道</Later> },
+        { key: '/insights', icon: <FundOutlined />, label: <Later>数据洞察</Later> },
+      ],
+    },
+    ...(settings.length ? [{ type: 'group' as const, label: '设置', children: settings }] : []),
   ];
 
+  const menu = (
+    <Menu
+      mode="inline"
+      selectedKeys={[selected]}
+      items={items}
+      onClick={(e) => nav(e.key)}
+      className="hr-nav"
+      aria-label="主导航"
+    />
+  );
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="hr-shell">
       <a href="#main" className="sr-only">
         跳到主要内容
       </a>
-      <Header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          borderBottom: '1px solid var(--rc-line)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 5,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 184, fontWeight: 500 }}>
+      <Header className="hr-header">
+        {compact && (
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            aria-label="打开导航"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+          />
+        )}
+        <a
+          className="hr-brand"
+          href="/workbench"
+          onClick={(e) => {
+            e.preventDefault();
+            nav('/workbench');
+          }}
+        >
           <img src="/favicon.svg" width={24} height={24} alt="" />
-          AI 招聘官
-        </div>
+          <span translate="no">AI 招聘官</span>
+        </a>
         <Input.Search
-          placeholder="搜人名、手机号、需求编号、岗位"
-          style={{ width: 300 }}
+          className="hr-search"
+          placeholder="搜人名、手机号、需求编号、岗位…"
           aria-label="全局搜索"
+          name="q"
+          autoComplete="off"
+          spellCheck={false}
           onSearch={(q) => q && nav(`/candidates?q=${encodeURIComponent(q)}`)}
         />
-        <Input
-          placeholder="让 AI 做件事，或者问个问题，比如“白班客服还差几个人”"
-          style={{ flex: 1, maxWidth: 520 }}
-          aria-label="AI 指令栏"
-          suffix={<span className="rc-kbd">⌘K</span>}
-        />
-        <span style={{ flex: 1 }} />
-        <Badge count={summary?.handoffs} size="small">
-          <BellOutlined style={{ fontSize: 18, color: 'var(--rc-ink-2)' }} aria-label="消息中心" />
-        </Badge>
-        <Avatar style={{ background: 'var(--rc-brand-soft)', color: 'var(--rc-brand)' }}>
-          {session?.name.slice(0, 1)}
-        </Avatar>
+        {!compact && (
+          <Input
+            className="hr-command"
+            prefix={<RobotOutlined aria-hidden style={{ color: 'var(--rc-ai)' }} />}
+            placeholder="让 AI 做件事，或者问个问题，比如“白班客服还差几个人”"
+            aria-label="AI 指令栏"
+            autoComplete="off"
+            suffix={<kbd className="rc-kbd">⌘&nbsp;K</kbd>}
+          />
+        )}
+        <span className="hr-header-end">
+          <Badge count={summary?.handoffs} size="small" offset={[-6, 6]}>
+            <Button
+              type="text"
+              shape="circle"
+              icon={<BellOutlined style={{ fontSize: 18 }} />}
+              aria-label={
+                summary?.handoffs ? `消息中心，${summary.handoffs} 个会话转给了你` : '消息中心'
+              }
+              onClick={() => nav('/workbench')}
+            />
+          </Badge>
+          <Avatar
+            style={{ background: 'var(--rc-brand-soft)', color: 'var(--rc-brand)', flex: 'none' }}
+            aria-label={session?.name}
+          >
+            {session?.name.slice(0, 1)}
+          </Avatar>
+        </span>
       </Header>
       <DegradeBanner show={!!summary?.aiDegraded} />
       <Layout>
-        <Sider
-          width={208}
-          style={{ borderRight: '1px solid var(--rc-line)' }}
-          breakpoint="lg"
-          collapsedWidth={64}
-        >
-          <Menu
-            mode="inline"
-            selectedKeys={[selected]}
-            items={items}
-            onClick={(e) => nav(e.key)}
-            style={{ paddingTop: 12, borderInlineEnd: 0 }}
-            aria-label="主导航"
-          />
-          <Can perm="settings.automation">
-            <Menu
-              mode="inline"
-              selectedKeys={[selected]}
-              items={[{ key: '/settings', icon: <SettingOutlined />, label: '设置' }]}
-              onClick={() => nav('/settings/automation')}
-              style={{ borderInlineEnd: 0 }}
-            />
-          </Can>
-          {session?.roles.some((role) => role === 'hrbp' || role === 'headcount_owner') && (
-            <Menu
-              selectedKeys={[loc.pathname]}
-              items={[{ key: '/settings/headcount', icon: <SettingOutlined />, label: '编制管理' }]}
-              onClick={(e) => nav(e.key)}
-            />
-          )}
-          {session?.roles.some((role) => role === 'admin' || role === 'recruiting_lead') && (
-            <Menu
-              selectedKeys={[loc.pathname]}
-              items={[
-                { key: '/settings/organization', icon: <SettingOutlined />, label: '组织与权限' },
-              ]}
-              onClick={(e) => nav(e.key)}
-            />
-          )}
-          {session?.roles.some(
-            (role) => role === 'recruiting_lead' || role === 'compensation_owner',
-          ) && (
-            <Menu
-              selectedKeys={[loc.pathname]}
-              items={[{ key: '/settings/salary', icon: <SettingOutlined />, label: '职级薪资表' }]}
-              onClick={(e) => nav(e.key)}
-            />
-          )}
-        </Sider>
-        <Content id="main" style={{ padding: 24, minWidth: 0 }}>
+        {compact ? (
+          <Drawer
+            placement="left"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            width={264}
+            title="AI 招聘官"
+            styles={{ body: { padding: 0 } }}
+          >
+            {menu}
+          </Drawer>
+        ) : (
+          <Sider width={216} className="hr-sider">
+            {menu}
+          </Sider>
+        )}
+        <Content id="main" tabIndex={-1} className="hr-main">
           <RequisitionNotices onOpen={(id) => nav(`/requisitions/${id}`)} />
           <Outlet />
         </Content>

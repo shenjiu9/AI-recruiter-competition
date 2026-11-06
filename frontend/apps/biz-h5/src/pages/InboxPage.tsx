@@ -14,18 +14,12 @@ export function InboxPage() {
     <main>
       <NavBar back={null}>招聘待办</NavBar>
       {import.meta.env.VITE_USE_MOCK === 'false' && (
-        <div className="rm-card">
+        <nav className="rm-quick" aria-label="更多入口">
           <Link to="/positions">岗位画像与关闭确认</Link>
-          <p>
-            <Link to="/interviews">我的面试与面评</Link>
-          </p>
-          <p>
-            <Link to="/workbench">招聘工作台与决策卡</Link>
-          </p>
-          <p>
-            <Link to="/hiring">录用决定与审批</Link>
-          </p>
-        </div>
+          <Link to="/interviews">我的面试与面评</Link>
+          <Link to="/workbench">招聘工作台与决策卡</Link>
+          <Link to="/hiring">录用决定与审批</Link>
+        </nav>
       )}
       <RequisitionNotices onOpen={setNoticeId} />
       <Popup

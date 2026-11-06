@@ -72,6 +72,16 @@ frontend/
 
 字体 HarmonyOS Sans SC，两个字重（400 / 500），数字统一等宽；字号 12 / 14 / 16 / 20 / 24 / 30；圆角按层级 4 / 8 / 12；阴影两级；减少动效模式下关闭动画。
 
+## 界面规范补充
+
+本轮界面优化参考了三个 UI/UX skill：Anthropic `frontend-design`（克制、只在一处用力、结构即信息）、`ui-ux-pro-max`（可访问性、触控、响应式、表单反馈等优先级清单）、Vercel `web-interface-guidelines`（代码级检查：焦点、`aria-label`、`text-wrap`、`color-scheme`、`Intl` 格式化等）。落到本项目的约定：
+
+- **导航**：侧栏按“工作台 / 招聘流程 / 更多 / 设置”分组，每个入口用不同图标；二期模块显示“二期”标记而不是点进去才发现为空。小于 992px 时侧栏收进左侧抽屉，AI 指令栏隐藏。
+- **状态**：列表中的状态用 `.rc-status[data-tone]`（文字 + 小圆点，空心表示结束或驳回），不只靠颜色。
+- **移动端**：antd-mobile 变量用 `:root:root` 覆盖，保证 H5 主色是藏青而不是默认蓝；按钮按下有轻微缩放，成对的次要操作等宽并排；触控目标 ≥ 44px。
+- **窄屏表格**：HR Web 在窄屏下表格横向滚动，不把中文挤成一字一行。
+- **空消息不占位**：没有审批与交接消息时不渲染消息条。
+
 ## 约定
 
 - **依赖边界**：`app → pages → features → packages`，功能切片之间不得互相引用，由 `eslint-plugin-boundaries` 强制（见根目录 `eslint.config.js`）。

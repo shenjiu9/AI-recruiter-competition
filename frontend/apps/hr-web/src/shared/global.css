@@ -1,7 +1,61 @@
+/* HR Web 外壳布局。颜色只用 ui-kit 的 CSS 变量。 */
+html { scroll-padding-top: 72px; }
+
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.sr-only:focus { position: fixed; left: 16px; top: 8px; width: auto; height: auto; clip: auto; z-index: 100; padding: 8px 12px; background: var(--rc-surface); border-radius: 4px; }
+.sr-only:focus { position: fixed; left: 16px; top: 8px; width: auto; height: auto; clip: auto; z-index: 100; padding: 8px 12px; background: var(--rc-surface); border-radius: 4px; box-shadow: var(--rc-shadow-1); }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--rc-ink-3); }
 .panel { background: var(--rc-surface); border: 1px solid var(--rc-line); border-radius: 8px; }
 .panel-h { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--rc-line); font-weight: 500; }
 .panel-b { padding: 4px 16px 8px; }
+@media (pointer: fine) { html { overscroll-behavior-y: none; } }
+
+.hr-shell { min-height: 100vh; min-height: 100dvh; }
+
+/* 顶栏：品牌区与侧栏同宽，搜索与 AI 指令栏分开，避免混淆“找东西”和“让 AI 做事” */
+.hr-header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--rc-line); }
+.hr-brand { display: flex; align-items: center; gap: 8px; flex: none; width: 168px; color: var(--rc-ink); font-weight: 500; font-size: 15px; text-decoration: none; }
+.hr-brand:hover { color: var(--rc-ink); }
+.hr-search { width: 280px; flex: 0 1 280px; min-width: 0; }
+.hr-command { flex: 1 1 auto; max-width: 520px; min-width: 0; background: var(--rc-ai-soft); border-color: transparent; }
+.hr-command:hover, .hr-command:focus-within { border-color: var(--rc-ai); }
+.hr-command input { background: transparent; }
+.hr-header-end { display: flex; align-items: center; gap: 12px; margin-left: auto; flex: none; }
+
+/* 侧栏导航：分组标题说明结构，计数用中性小胶囊 */
+.hr-sider { border-right: 1px solid var(--rc-line); }
+.hr-sider .ant-layout-sider-children { position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; overscroll-behavior: contain; }
+.hr-nav.ant-menu { border-inline-end: 0 !important; padding: 12px 8px 24px; background: transparent; }
+.hr-nav .ant-menu-item-group-title { padding: 16px 12px 4px; font-size: 12px; color: var(--rc-ink-3); }
+.hr-nav .ant-menu-item { margin-inline: 0; width: 100%; padding-inline-start: 12px !important; }
+.hr-nav .ant-menu-item-group-list .ant-menu-item { padding-inline-start: 12px !important; }
+.hr-nav .ant-menu-item-selected { font-weight: 500; }
+.hr-nav-label { display: flex; align-items: center; gap: 8px; }
+.hr-nav-count { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--rc-brand); color: var(--rc-surface); font-size: 12px; line-height: 20px; text-align: center; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hr-nav-later { margin-left: auto; padding: 0 6px; border: 1px solid var(--rc-line-strong); border-radius: 4px; font-size: 11px; line-height: 18px; color: var(--rc-ink-3); font-weight: 400; }
+
+/* 内容区：宽屏下限制最大宽度，长行不超过阅读舒适区 */
+.hr-main { padding: 24px 32px 48px; min-width: 0; outline: none; }
+.hr-main > * { max-width: 1600px; margin-inline: auto; }
+
+@media (max-width: 991px) {
+  .hr-header { gap: 8px; padding-inline: 12px !important; }
+  .hr-brand { width: auto; }
+  .hr-search { flex: 1 1 auto; width: auto; }
+  .hr-main { padding: 16px 16px 40px; }
+  .hr-brief-row { flex-direction: column; gap: 0 !important; }
+  .hr-brief-row > .ant-btn { margin: 0 0 16px !important; }
+  /* 窄屏下表格横向滚动，不把中文挤成一字一行 */
+  .hr-main .ant-table-content { overflow-x: auto; overscroll-behavior-x: contain; }
+  .hr-main .ant-table-content > table { min-width: 760px; }
+  .hr-page-header .extra { margin-left: 0; }
+}
+@media (max-width: 575px) {
+  .hr-brand span { display: none; }
+}
+
+/* 页面标题：标题 + 一句话说明这页负责什么 + 主操作靠右 */
+.hr-page-header { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.hr-page-header h1 { margin: 0; font-size: 24px; font-weight: 500; line-height: 1.35; color: var(--rc-ink); }
+.hr-page-header .sub { margin-top: 4px; max-width: 44em; color: var(--rc-ink-2); }
+.hr-page-header .extra { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
