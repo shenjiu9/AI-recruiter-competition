@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     dev_auth_enabled: bool = False
     dev_login_password: str = ""
     position_worker_enabled: bool = True
+    conversation_worker_enabled: bool = True
+    candidate_portal_url: str = "http://localhost:5175"
     position_holidays: list[date] = []
     position_workdays: list[date] = []
     cors_origins: list[str] = [

@@ -108,6 +108,9 @@ importers:
       '@recruiter/mobile-ui':
         specifier: workspace:*
         version: link:../../packages/mobile-ui
+      '@recruiter/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@recruiter/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry

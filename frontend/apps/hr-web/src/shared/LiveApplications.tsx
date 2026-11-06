@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Input, Modal, Space, Table } from 'antd';
+import { Alert, Button, Checkbox, Input, Modal, Space, Table } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -53,20 +53,16 @@ export function AttachDialog({
     queryKey: ['attach-options', candidateId, query, page],
     queryFn: async () =>
       candidateId
-        ? api
-            .positionPage(page, 'open', { query })
-            .then((r) => ({
-              ...r,
-              items: r.items.filter((p) => p.canEdit).map((p) => ({ id: p.id, name: p.name })),
-            }))
-        : api
-            .candidatePage(page, { query })
-            .then((r) => ({
-              ...r,
-              items: r.items
-                .filter((c) => !c.do_not_contact && c.consent !== 'revoked')
-                .map((c) => ({ id: c.id, name: c.profile.name })),
-            })),
+        ? api.positionPage(page, 'open', { query }).then((r) => ({
+            ...r,
+            items: r.items.filter((p) => p.canEdit).map((p) => ({ id: p.id, name: p.name })),
+          }))
+        : api.candidatePage(page, { query }).then((r) => ({
+            ...r,
+            items: r.items
+              .filter((c) => !c.do_not_contact && c.consent !== 'revoked')
+              .map((c) => ({ id: c.id, name: c.profile.name })),
+          })),
   });
   const op = useLiveWrite<AttachCommand, LiveApplication>(
     (body, opts) => api.attachCandidate(body, opts),
@@ -198,6 +194,7 @@ function ActionDialog({
   const cache = useQueryClient();
   const [reason, setReason] = useState('');
   const [reasonCode, setReasonCode] = useState<ApplicationCommand['reason_code']>('');
+  const [notify, setNotify] = useState(false);
   const [stage, setStage] = useState<ApplicationCommand['target_stage']>('reach');
   const [target, setTarget] = useState('');
   const [query, setQuery] = useState('');
@@ -228,7 +225,17 @@ function ActionDialog({
         </p>
         {action === 'reject' && (
           <>
-            <Alert type="info" message="本次仅记录淘汰结果，不发送对外通知。" />
+            <Alert
+              type="info"
+              message="可安排下一个工作日北京时间 10 点在候选人 H5 页面发布结束通知；送达前可撤销淘汰。"
+            />
+            <Checkbox
+              checked={notify}
+              disabled={op.locked}
+              onChange={(e) => setNotify(e.target.checked)}
+            >
+              安排 H5 结束通知
+            </Checkbox>
             <label>
               淘汰原因分类
               <select
@@ -328,6 +335,7 @@ function ActionDialog({
               expected_version: app.version,
               reason,
               reason_code: reasonCode,
+              notify: action === 'reject' && notify,
               ...(action === 'rollback' ? { target_stage: stage } : {}),
               ...(action === 'transfer' ? { target_position_id: target } : {}),
             })

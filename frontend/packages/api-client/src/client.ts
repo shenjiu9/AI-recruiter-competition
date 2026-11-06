@@ -9,6 +9,12 @@ import type {
 } from './candidate-contracts';
 export type * from './candidate-contracts';
 import type {
+  ConversationCommand,
+  ConversationResult,
+  LiveConversation,
+} from './conversation-contracts';
+export type * from './conversation-contracts';
+import type {
   AiActivity,
   Anomaly,
   Application,
@@ -216,6 +222,18 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  liveConversation(id: string): Promise<LiveConversation>;
+  conversationCommand(
+    id: string,
+    body: ConversationCommand,
+    opts: WriteOpts,
+  ): Promise<ConversationResult>;
+  livePortal(token: string): Promise<LiveConversation>;
+  livePortalCommand(
+    token: string,
+    body: ConversationCommand,
+    opts: WriteOpts,
+  ): Promise<LiveConversation>;
   candidatePage(
     page: number,
     filters?: Record<string, string>,

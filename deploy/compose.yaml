@@ -9,6 +9,7 @@ x-backend: &backend
     ENVIRONMENT: development
     DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-false}
     DEV_LOGIN_PASSWORD: ${DEV_LOGIN_PASSWORD:-}
+    CANDIDATE_PORTAL_URL: ${CANDIDATE_PORTAL_URL:-http://localhost:5175}
 
 services:
   postgres:
@@ -69,6 +70,16 @@ services:
       dockerfile: frontend/Dockerfile
       args: {APP: biz-h5}
     ports: ['127.0.0.1:5174:80']
+    depends_on:
+      api: {condition: service_healthy}
+
+  candidate-h5:
+    profiles: ['web']
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args: {APP: candidate-h5}
+    ports: ['127.0.0.1:5175:80']
     depends_on:
       api: {condition: service_healthy}
 

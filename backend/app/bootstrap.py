@@ -6,6 +6,8 @@ from app.modules.application.adapters.repository import SqlApplications
 from app.modules.application.public import ApplicationFacade
 from app.modules.candidate.adapters.repository import SqlCandidates
 from app.modules.candidate.public import CandidateFacade
+from app.modules.conversation.public import ConversationFacade
+from app.modules.conversation.repository import SqlConversations
 from app.modules.org.adapters.configuration import SqlConfiguration
 from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
@@ -73,7 +75,19 @@ class Container:
             )
             candidate.applications = application
             position.applications = application
+            conversation = ConversationFacade(
+                SqlConversations(session, self.crypto),
+                candidate,
+                application,
+                org,
+                self.clock,
+                SqlJournal(session, self.clock),
+                self.settings,
+            )
+            candidate.conversations = conversation
+            application.conversations = conversation
             yield SimpleNamespace(
+                conversation=conversation,
                 session=session,
                 position=position,
                 candidate=candidate,

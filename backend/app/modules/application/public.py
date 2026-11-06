@@ -7,6 +7,7 @@ STAGES = ["reach", "talking", "ai_eval", "interview", "manager_eval", "hired"]
 
 class ApplicationFacade:
     def __init__(self, store, candidates, positions, clock, journal):
+        self.conversations = None
         self.store, self.candidates, self.positions, self.clock, self.journal = (
             store,
             candidates,
@@ -186,6 +187,7 @@ class ApplicationFacade:
                 notice_at=None,
                 reason=command.reason,
             )
+            self.conversations.cancel_notice(ctx, app["canonical_id"], aid)
             self.save(ctx, app, "reopened")
             return {"id": aid}
         if app["outcome"] or pos["status"] == "closed":
@@ -225,7 +227,7 @@ class ApplicationFacade:
         else:
             if not command.reason or (action == "reject" and not command.reason_code):
                 raise DomainError("REASON_REQUIRED", "请填写终止原因；淘汰须选择原因分类")
-            if command.notify:
+            if command.notify and action != "reject":
                 raise DomainError(
                     "DELIVERY_NOT_READY", "通知发送将在沟通模块接入；当前可选择不发送通知"
                 )
@@ -237,6 +239,9 @@ class ApplicationFacade:
                 outcome_stage=app["stage"],
                 reason_code=command.reason_code,
             )
+            if command.notify:
+                app["notice_at"] = self.conversations.queue_notice(ctx, app)
+                app["notice_status"] = "queued"
             self.save(ctx, app, "ended")
             if action == "transfer":
                 self.open(
@@ -308,3 +313,36 @@ class ApplicationFacade:
 
     def erase(self, ids):
         self.store.erase(ids)
+
+    def public_statuses(self, cid):
+        labels = {
+            "reach": "沟通中",
+            "talking": "沟通中",
+            "ai_eval": "评估中",
+            "interview": "面试中",
+            "manager_eval": "等待结果",
+            "hired": "已通过，HR 会联系您沟通后续",
+        }
+        return [
+            {
+                "id": a["id"],
+                "position_name": a["position_name"],
+                "status": "已结束"
+                if a["notice_status"] == "sent" or a["outcome"] in {"withdrawn", "transferred"}
+                else labels.get(a["stage"], "等待结果"),
+            }
+            for a in self.for_candidates(self.candidates.family(cid))
+        ]
+
+    def deliver_notice(self, ctx, aid):
+        app, _ = self.authorize(ctx, aid)
+        if app["outcome"] != "rejected" or app["notice_status"] != "queued":
+            raise DomainError("NOTICE_CANCELLED", "应聘结果已变更")
+        app.update(notice_status="sent", notice_at=self.clock.now().isoformat())
+        self.save(ctx, app, "notice_delivered")
+
+    def cancel_delivery(self, ctx, aid):
+        app = self.store.get(aid)
+        if app and app["notice_status"] == "queued":
+            app.update(notice_status="cancelled", notice_at=None)
+            self.save(ctx, app, "notice_cancelled")

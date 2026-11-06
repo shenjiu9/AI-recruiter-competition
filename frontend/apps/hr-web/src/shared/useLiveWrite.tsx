@@ -5,6 +5,7 @@ import { newIdempotencyKey, toAppError, type WriteOpts } from '@recruiter/api-cl
 export function useLiveWrite<T, R>(
   operation: (body: T, opts: WriteOpts) => Promise<R>,
   success: (result: R) => void,
+  refresh?: () => Promise<unknown>,
 ) {
   const pending = useRef<{ body: T; key: string }>();
   const inFlight = useRef(false);
@@ -49,7 +50,21 @@ export function useLiveWrite<T, R>(
             重试本次操作
           </Button>
         )}
-        {conflict && <Button onClick={() => window.location.reload()}>刷新当前数据</Button>}
+        {conflict && (
+          <Button
+            onClick={async () => {
+              if (!refresh) {
+                window.location.reload();
+                return;
+              }
+              await refresh();
+              setConflict(false);
+              setError('数据已刷新，请核对后重新提交，输入已保留。');
+            }}
+          >
+            刷新当前数据
+          </Button>
+        )}
       </>
     ),
   };

@@ -27,6 +27,7 @@ def container(tmp_path):
         dev_auth_enabled=True,
         dev_login_password="test-password",
         position_worker_enabled=False,
+        conversation_worker_enabled=False,
     )
     container = build_container(settings)
     if postgres_url:

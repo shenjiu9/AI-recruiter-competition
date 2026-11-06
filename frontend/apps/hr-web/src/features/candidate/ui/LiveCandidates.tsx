@@ -13,6 +13,7 @@ import {
 import { PageHeader } from '../../../shared/PageHeader';
 import { useLiveWrite } from '../../../shared/useLiveWrite';
 import { AttachDialog, LiveApplicationTable, STAGE_LABEL } from '../../../shared/LiveApplications';
+import { LiveConversation } from './LiveConversation';
 
 const EMPTY: CandidateProfile = {
   name: '',
@@ -698,6 +699,7 @@ function CandidateDetailContent({ id }: { id: string }) {
         投递记录 {c.applications.filter((a) => !a.restricted).length} / {c.applications.length}
       </h2>
       <LiveApplicationTable rows={c.applications} />
+      {c.can_edit && <LiveConversation key={c.id} id={c.id} applications={c.applications} />}
       {c.can_edit && (
         <>
           <h2>简历版本与解析核对</h2>

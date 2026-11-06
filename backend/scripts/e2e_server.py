@@ -23,6 +23,7 @@ with TemporaryDirectory(prefix="recruiter-e2e-") as directory:
         DEV_AUTH_ENABLED="true",
         DEV_LOGIN_PASSWORD="e2e-only-password",
         ENVIRONMENT="development",
+        CANDIDATE_PORTAL_URL="http://127.0.0.1:5185",
     )
     command.upgrade(Config("alembic.ini"), "head")
     container = build_container(Settings())

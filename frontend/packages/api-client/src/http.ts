@@ -15,6 +15,21 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  liveConversation: (id) => ({ method: 'GET', path: `/hr/candidates/${enc(id)}/conversation` }),
+  conversationCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/candidates/${enc(id)}/conversation`,
+    body,
+    opts,
+  }),
+  livePortal: (token) => ({ method: 'GET', path: '/candidate/session', token }),
+  livePortalCommand: (token, body, opts) => ({
+    method: 'POST',
+    path: '/candidate/actions',
+    token,
+    body,
+    opts,
+  }),
   candidatePage: (page, filters = {}) => ({
     method: 'GET',
     path: `/hr/candidates?page=${page}&size=20&${new URLSearchParams(filters)}`,

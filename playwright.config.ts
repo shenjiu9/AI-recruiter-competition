@@ -17,6 +17,12 @@ export default defineConfig({
   },
   webServer: [
     {
+      command: `${pnpm} --filter @recruiter/candidate-h5 dev --port 5185 --host 127.0.0.1 --strictPort`,
+      url: 'http://127.0.0.1:5185',
+      timeout: 60_000,
+      env: { VITE_USE_MOCK: 'false', API_PROXY_TARGET: 'http://127.0.0.1:8010' },
+    },
+    {
       command: `${python} scripts/e2e_server.py`,
       cwd: './backend',
       url: 'http://127.0.0.1:8010/health/ready',

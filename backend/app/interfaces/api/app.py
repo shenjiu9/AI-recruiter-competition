@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException
 
 from app.interfaces.api.auth import router as auth_router
 from app.interfaces.api.candidate import router as candidate_router
+from app.interfaces.api.conversation import router as conversation_router
 from app.interfaces.api.org import router as org_router
 from app.interfaces.api.organization import router as organization_router
 from app.interfaces.api.position import router as pos_router
@@ -23,6 +24,7 @@ from app.kernel.types import DomainError
 def create_api(container):
     @asynccontextmanager
     async def lifespan(app):
+        from app.conversation_worker import run_once as conversation_tick
         from app.position_worker import run_once
 
         stop = asyncio.Event()
@@ -30,7 +32,10 @@ def create_api(container):
         async def work():
             while not stop.is_set():
                 try:
-                    await asyncio.to_thread(run_once, container)
+                    if container.settings.position_worker_enabled:
+                        await asyncio.to_thread(run_once, container)
+                    if container.settings.conversation_worker_enabled:
+                        await asyncio.to_thread(conversation_tick, container)
                 except Exception as exc:
                     logging.getLogger("recruiter").warning(
                         "position_worker_unavailable type=%s", type(exc).__name__
@@ -40,7 +45,14 @@ def create_api(container):
                 except TimeoutError:
                     pass
 
-        task = asyncio.create_task(work()) if container.settings.position_worker_enabled else None
+        task = (
+            asyncio.create_task(work())
+            if (
+                container.settings.position_worker_enabled
+                or container.settings.conversation_worker_enabled
+            )
+            else None
+        )
         try:
             yield
         finally:
@@ -64,6 +76,7 @@ def create_api(container):
         response = await call_next(request)
         response.headers["X-Trace-ID"] = request.state.trace_id
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
     def error(request, code, message, status, details=None):
@@ -130,4 +143,5 @@ def create_api(container):
     app.include_router(req_router)
     app.include_router(pos_router)
     app.include_router(candidate_router)
+    app.include_router(conversation_router)
     return app
