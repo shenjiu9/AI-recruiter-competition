@@ -1,0 +1,9 @@
+{
+  "A1": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096},
+  "A2": {"model": "deepseek-flash", "thinking": false, "max_tokens": 2048},
+  "A3": {"model": "deepseek-flash", "thinking": false, "max_tokens": 4096},
+  "A4": {"model": "deepseek-flash", "thinking": false, "max_tokens": 1024},
+  "A5": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096},
+  "A6": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096},
+  "A7": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096}
+}

@@ -123,8 +123,10 @@ export function LiveConversation({
         {c.messages.length === 0 && <p>暂无消息。候选人可在专属页面发送消息。</p>}
         {c.messages.map((m) => (
           <article key={m.id} style={{ padding: 12, borderBottom: '1px solid #eee' }}>
-            <strong>{m.sender === 'candidate' ? '候选人' : 'HR'}</strong> · H5 ·{' '}
-            {new Date(m.created_at).toLocaleString()}
+            <strong>
+              {m.sender === 'candidate' ? '候选人' : m.sender === 'ai' ? 'AI 招聘助手' : 'HR'}
+            </strong>{' '}
+            · H5 · {new Date(m.created_at).toLocaleString()}
             <Tag>
               {m.status === 'queued'
                 ? `等待发送 ${new Date(m.due_at!).toLocaleString()}`

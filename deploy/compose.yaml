@@ -11,12 +11,14 @@ x-backend: &backend
     DEV_LOGIN_PASSWORD: ${DEV_LOGIN_PASSWORD:-}
     CANDIDATE_PORTAL_URL: ${CANDIDATE_PORTAL_URL:-http://localhost:5175}
     AI_WORKER_ENABLED: ${AI_WORKER_ENABLED:-false}
+    AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-120}
     DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://host.docker.internal:8080/v1}
     DIFY_API_KEYS: '${DIFY_API_KEYS:-{}}'
 
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: recruiter
       POSTGRES_USER: recruiter
@@ -30,6 +32,7 @@ services:
       retries: 20
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports: ['127.0.0.1:6379:6379']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
@@ -49,6 +52,7 @@ services:
       migrate: {condition: service_completed_successfully}
   api:
     <<: *backend
+    restart: unless-stopped
     ports: ['127.0.0.1:8000:8000']
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -59,6 +63,7 @@ services:
       retries: 10
   hr-web:
     profiles: ['web']
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: frontend/Dockerfile
@@ -68,6 +73,7 @@ services:
       api: {condition: service_healthy}
   biz-h5:
     profiles: ['web']
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: frontend/Dockerfile
@@ -78,6 +84,7 @@ services:
 
   candidate-h5:
     profiles: ['web']
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: frontend/Dockerfile

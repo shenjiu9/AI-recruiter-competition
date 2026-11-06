@@ -43,7 +43,7 @@ export interface LiveConversation {
   messages: {
     id: string;
     content: string;
-    sender: 'candidate' | 'hr';
+    sender: 'candidate' | 'hr' | 'ai';
     channel: string;
     application_ids: string[];
     created_at: string;

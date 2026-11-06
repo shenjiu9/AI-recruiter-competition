@@ -92,7 +92,7 @@ export function LivePortal() {
         content={
           c.mode === 'hr'
             ? '招聘 HR 已接管会话，消息由人工回复。'
-            : '您的消息会提交招聘 HR 处理，当前未启用 AI 自动回复。'
+            : '您正在与招聘助手沟通；AI 生成的消息会标记为 AI，可随时要求转人工。'
         }
       />
       <section className="rm-card">
@@ -167,8 +167,10 @@ export function LivePortal() {
                 borderRadius: 8,
               }}
             >
-              <strong>{m.sender === 'candidate' ? '我' : '招聘 HR'}</strong> ·{' '}
-              {new Date(m.created_at).toLocaleString()}
+              <strong>
+                {m.sender === 'candidate' ? '我' : m.sender === 'ai' ? 'AI 招聘助手' : '招聘 HR'}
+              </strong>{' '}
+              · {new Date(m.created_at).toLocaleString()}
               <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{m.content}</p>
               <small>
                 {m.application_ids

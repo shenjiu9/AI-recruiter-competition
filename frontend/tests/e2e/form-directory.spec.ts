@@ -56,6 +56,8 @@ test('真实目录：新部门、同名人员、分页搜索、保密名单保�
   await page.getByRole('button', { name: '编辑需求' }).click();
   await expect(page.getByText('历史值：同名测试员工，请重新选择人员')).toBeVisible();
   await expect(page.getByRole('button', { name: '提交审批', exact: true })).toBeDisabled();
+  // Keyboard actions do not wait for async directory loading to enable the field.
+  await expect(page.locator('#f-dept')).toBeEnabled();
   await page.locator('#f-dept').press('ArrowDown');
   await page.locator('.ant-select-tree-title').getByText('客服测试小组', { exact: true }).click();
   await page.getByRole('button', { name: '下一页人员', exact: true }).click();

@@ -23,7 +23,22 @@ def run_once(container, queue="batch"):
             result = container.ai_gateway.call(job["component"], job["inputs"], job["id"], sample)
             samples.append(result.pop("output"))
             runs.append(result)
-        output = validate(job["component"], samples, job["inputs"])
+        try:
+            output = validate(job["component"], samples, job["inputs"])
+        except (DomainError, ValueError, TypeError, KeyError) as rejected:
+            if job["component"] != "A4":
+                raise
+            reasons = (
+                rejected.details.get("reasons", [rejected.code])
+                if isinstance(rejected, DomainError)
+                else ["schema_invalid"]
+            )
+            # One bounded rewrite using rule codes, never raw validation errors
+            # or untrusted rejected text. The second answer must pass all rules.
+            result = container.ai_gateway.call("A4", job["inputs"], job["id"], retry_reason=reasons)
+            replacement = result.pop("output")
+            runs.append({**result, "kind": "rewrite", "reasons": reasons})
+            output = validate("A4", [replacement], job["inputs"])
     except DomainError as exc:
         error = exc.code
     except (ValueError, TypeError, KeyError):

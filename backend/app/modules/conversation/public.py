@@ -363,11 +363,19 @@ class ConversationFacade:
         self.touch(ctx, c, "ai_replied")
         return None
 
+    def ai_settled(self, cid):
+        return self.store.get(cid)["debounce_at"] is None
+
     def ai_requests(self):
         result = []
         now = self.clock.now()
         for c in self.store.all():
-            if c["mode"] == "hr" or c.get("ai_paused") or not self.candidates.contactable(c["id"]):
+            if (
+                c["debounce_at"]
+                or c["mode"] == "hr"
+                or c.get("ai_paused")
+                or not self.candidates.contactable(c["id"])
+            ):
                 continue
             latest = self.latest_inbound(c["id"])
             if not latest or now - datetime.fromisoformat(latest["created_at"]) < timedelta(

@@ -77,6 +77,8 @@ def build(s, ctx, component, object_id, prompt=""):
             data["sources"] = s.candidate.ai_sources(cid)
         if component == "A4":
             conversation = s.conversation.snapshot(cid, ctx)
+            if not s.conversation.ai_settled(cid):
+                raise DomainError("AI_DEBOUNCING", "候选人消息正在合并，请稍后再生成回复", 409)
             if not s.conversation.readable(ctx, cid, []):
                 raise DomainError("FORBIDDEN", "会话跨岗信息不在完整授权范围内", 403)
             data["versions"]["conversation"] = conversation["version"]

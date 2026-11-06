@@ -330,6 +330,10 @@ def test_a4_debounce_auto_reply_human_handoff_and_no_duplicate(client, login, fi
     container.clock = SimpleNamespace(now=lambda: now)
     with container.scope() as s:
         schedule(s, "realtime")
+        assert s.engine.jobs.all() == []
+        s.conversation.tick()
+    with container.scope() as s:
+        schedule(s, "realtime")
     run_once(container, "realtime")
     messages = portal_get(client, portal)["messages"]
     assert sum(m["sender"] == "ai" for m in messages) == 1
@@ -393,6 +397,51 @@ def test_scheduler_event_receipt_is_idempotent(client, login, container):
             assert len(s.engine.jobs.all()) == 1
     with container.db.sessions() as db:
         assert db.scalar(select(InboxRecord).where(InboxRecord.consumer == "ai.events.v1"))
+
+
+@pytest.mark.parametrize("repair", [True, False])
+def test_reply_rewrites_once_with_rule_codes_and_revalidates(
+    client, login, fields, container, repair
+):
+    from test_conversations import link, portal_act, portal_get
+
+    candidate = setup(client, login, container)
+    _, pos = opened(client, login, fields, container)
+    ok(attach(client, login, candidate, pos))
+    clock = container.clock
+    container.clock = SimpleNamespace(now=lambda: clock.now() - timedelta(seconds=20))
+    portal = link(client, login, candidate["id"])
+    ok(portal_act(client, portal, "send", content="请问具体工作内容？"))
+    container.clock = clock
+    enable(client, login, mode="manual")
+    calls = []
+
+    def call(component, inputs, action_id, sample=0, retry_reason=None):
+        calls.append(retry_reason)
+        return {
+            "output": {
+                "reply": "您好，我是AI招聘助手。我会请招聘 HR 核实后回复您。"
+                if repair and retry_reason
+                else "您好，我是AI招聘助手，保证录用。",
+                "self_confidence": 1,
+            },
+            "tokens": 10,
+            "elapsed_ms": 1,
+            "run_id": str(len(calls)),
+        }
+
+    container.ai_gateway.call = call
+    early = start(client, login, "A4", candidate["id"])
+    assert early.status_code == 409 and early.json()["error"]["code"] == "AI_DEBOUNCING"
+    with container.scope() as s:
+        s.conversation.tick()
+    job = ok(start(client, login, "A4", candidate["id"]))
+    assert run_once(container, "realtime")
+    job = get(client, login, job)
+    assert calls == [None, ["promise_forbidden"]]
+    assert len(job["runs"]) == 2 and job["runs"][1]["kind"] == "rewrite"
+    assert job["status"] == ("review" if repair else "retry")
+    assert not any(m["sender"] == "ai" for m in portal_get(client, portal)["messages"])
 
 
 def test_real_dify_http_adapter_contract_circuit_and_no_redirect(monkeypatch, container):
