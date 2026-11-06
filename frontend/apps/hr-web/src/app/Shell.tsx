@@ -17,8 +17,18 @@ import {
   UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, type MenuProps } from 'antd';
-import { useEffect, useState } from 'react';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Drawer,
+  Input,
+  Layout,
+  Menu,
+  type InputRef,
+  type MenuProps,
+} from 'antd';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '@recruiter/api-client';
 import { useSession } from '@recruiter/auth';
@@ -49,6 +59,8 @@ export function Shell() {
   const canAutomation = usePermission('settings.automation');
   const compact = !useMediaQuery('(min-width: 992px)');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [command, setCommand] = useState('');
+  const commandRef = useRef<InputRef>(null);
   const { data: summary } = useQuery({
     queryKey: qk.workbench.summary(),
     queryFn: () => api.workbenchSummary(),
@@ -56,6 +68,26 @@ export function Shell() {
   });
 
   useEffect(() => setDrawerOpen(false), [loc.pathname]);
+
+  // ⌘K / Ctrl+K 聚焦 AI 指令栏
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        commandRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const sendCommand = () => {
+    const text = command.trim();
+    if (!text) return;
+    setCommand('');
+    commandRef.current?.blur();
+    nav('/ai-jobs', { state: { ask: text } });
+  };
 
   const first = '/' + (loc.pathname.split('/')[1] || 'workbench');
   const selected = first === '/settings' ? loc.pathname : first;
@@ -176,6 +208,13 @@ export function Shell() {
             prefix={<RobotOutlined aria-hidden style={{ color: 'var(--rc-ai)' }} />}
             placeholder="让 AI 做件事，或者问个问题，比如“白班客服还差几个人”"
             aria-label="AI 指令栏"
+            ref={commandRef}
+            value={command}
+            maxLength={4000}
+            onChange={(e) => setCommand(e.target.value)}
+            onPressEnter={(e) => {
+              if (!e.nativeEvent.isComposing) sendCommand();
+            }}
             autoComplete="off"
             suffix={<kbd className="rc-kbd">⌘&nbsp;K</kbd>}
           />

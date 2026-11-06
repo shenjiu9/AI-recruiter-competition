@@ -241,6 +241,8 @@ export interface ApiClient {
     body: { component: string; object_id: string; prompt: string },
     opts: WriteOpts,
   ): Promise<AiJob>;
+  /** 一句话发起 AI 任务：后端识别任务类型与对象，唯一匹配时直接创建任务 */
+  askAi(body: { text: string }, opts: WriteOpts): Promise<AiIntent>;
   aiJobCommand(
     id: string,
     body: { action: string; expected_version: number; reason: string; verified: boolean },
@@ -549,6 +551,21 @@ export interface AiJob {
   output?: Record<string, unknown> | null;
   runs?: { run_id: string; tokens: number; elapsed_ms: number }[];
   history?: { status: string; at: string; code: string }[];
+}
+
+export interface AiIntent {
+  status: 'started' | 'choose' | 'blocked' | 'unsupported';
+  component: string | null;
+  component_name: string;
+  message: string;
+  options: { id: string; label: string }[];
+  job_id: string;
+  job?: AiJob;
+  prompt: string;
+  router: 'model' | 'rules';
+  reason: string;
+  examples: string[];
+  error_code?: string;
 }
 
 export interface ApiConfig {

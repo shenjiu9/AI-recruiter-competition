@@ -69,3 +69,82 @@ test('AI extraction task replays lost response, displays evidence and applies on
     });
   }
 });
+
+test('one sentence in the AI command bar starts the matching task for the named candidate', async ({
+  page,
+  request,
+}, info) => {
+  const admin = await headers(request, 'admin');
+  const before = await (await request.get(`${API}/automation-live`, { headers: admin })).json();
+  const configured = await request.post(`${API}/automation-live`, {
+    headers: { ...admin, 'Idempotency-Key': crypto.randomUUID() },
+    data: {
+      expected_version: before.version,
+      mode: 'manual',
+      components: { ...before.components, A3: true },
+    },
+  });
+  expect(configured.ok()).toBeTruthy();
+  try {
+    const name = '林语晨' + String(Date.now()).slice(-4);
+    const response = await request.post(`${API}/candidates`, {
+      headers: await headers(request),
+      data: { profile: { name, skills: 'Excel 数据分析' } },
+    });
+    expect(response.ok()).toBeTruthy();
+    const c = (await response.json()).candidate;
+    expect(
+      (
+        await request.post(`${API}/candidates/${c.id}/actions`, {
+          headers: await headers(request),
+          data: {
+            action: 'consent',
+            expected_version: c.version,
+            granted: true,
+            evidence: '本人签名',
+            reason: '测试招聘评估',
+          },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    await login(page, 'hr', '/requisitions');
+    await page.keyboard.press('Control+k');
+    await expect(page.getByLabel('AI 指令栏')).toBeFocused();
+    await page.keyboard.type(`帮我提取${name}的简历信息`);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/ai-jobs$/);
+    await expect(page.getByRole('status').filter({ hasText: '识别为' })).toContainText(
+      '简历字段提取',
+    );
+    await expect(page.getByRole('heading', { name: '简历字段提取 · 待人工复核' })).toBeVisible();
+    await expect(page.getByText('Excel 数据分析').first()).toBeVisible();
+    await page.screenshot({ path: info.outputPath('ai-command-started.png'), fullPage: true });
+
+    // Reloading must not start the same command again.
+    const total = (
+      await (await request.get(`${API}/ai-jobs`, { headers: await headers(request) })).json()
+    ).total;
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'AI 任务与复核' })).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(
+      (await (await request.get(`${API}/ai-jobs`, { headers: await headers(request) })).json())
+        .total,
+    ).toBe(total);
+
+    // Without a name the panel asks which candidate, then starts on the pick.
+    await page.getByLabel('用一句话让 AI 做事').fill('帮我提取简历字段');
+    await page.getByRole('button', { name: '交给 AI' }).click();
+    await expect(page.getByText('没从这句话里找到候选人姓名')).toBeVisible();
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(page.getByText('已开始“简历字段提取”')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^简历字段提取 · / })).toBeVisible();
+    await page.screenshot({ path: info.outputPath('ai-command-choose.png'), fullPage: true });
+  } finally {
+    const latest = await (await request.get(`${API}/automation-live`, { headers: admin })).json();
+    await request.post(`${API}/automation-live`, {
+      headers: { ...admin, 'Idempotency-Key': crypto.randomUUID() },
+      data: { expected_version: latest.version, mode: before.mode, components: before.components },
+    });
+  }
+});
