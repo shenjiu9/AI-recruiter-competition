@@ -38,7 +38,9 @@ SOCIAL = [
 # characters and require every elided piece to appear, in order, in the source.
 ELLIPSIS = re.compile(r"…+|\.{3,}|。{3,}")
 NOISE = re.compile(r"[\W_]+")
-NUMBER = re.compile(r"\d+(?:\.\d+)?")
+# A figure is its value plus the unit right after it ("3 人" differs from "3 周"),
+# so a real count cannot be reused to dress up an invented forecast or rate.
+NUMBER = re.compile(r"(\d+(?:\.\d+)?)\s*([人名位个天日周月年次轮倍家万千小%]?)")
 A3_FIELDS = {
     "city",
     "company",
@@ -92,7 +94,9 @@ def valid_evidence(evidence, sources):
 
 
 def numbers(text):
-    return {float(n) for n in NUMBER.findall(unicodedata.normalize("NFKC", text or ""))}
+    return {
+        (float(n), unit) for n, unit in NUMBER.findall(unicodedata.normalize("NFKC", text or ""))
+    }
 
 
 def validate_reply(output, context):
@@ -129,6 +133,12 @@ def validate_reply(output, context):
         remaining = remaining.replace(phrase, "")
     if remaining:
         reject("回复未通过证据或披露校验", "ungrounded_reply")
+    # Deferring to HR is a promise of human follow-up; never let it auto-close.
+    # Live runs showed the model sometimes defers but leaves needs_human false.
+    if compact("核实后回复") in compact(text):
+        value["needs_human"] = True
+        if "ask_human" not in value["intents"]:
+            value["intents"].append("ask_human")
     return value
 
 
@@ -269,15 +279,21 @@ def insight(result, context):
         reject("洞察缺少结论", "answer_required")
     if not set(refs).issubset(sources):
         reject("洞察引用不存在", "data_reference_invalid")
-    # Every figure in the answer must come from the cited aggregates, the position's
-    # own fields (e.g. level P5) or the HR's question; otherwise it is invented.
-    known = numbers(context.get("prompt", "")).union(
+    # Every figure must come from the position's aggregates, its own fields (e.g. level
+    # P5) or the HR's question; otherwise it is invented. Live runs showed the model
+    # quotes correct figures but forgets to list every key, so a figure found in an
+    # uncited source adds that source to the citations instead of failing the job.
+    used = numbers(" ".join([result["answer"], *result["suggestions"]]))
+    covered = numbers(context.get("prompt", "")).union(
         numbers(" ".join(map(str, (context.get("position") or {}).values()))),
         *(numbers(sources[r]) for r in refs),
     )
-    text = " ".join([result["answer"], *result["suggestions"]])
-    if numbers(text) - known:
-        reject("洞察数字未在引用数据中出现", "ungrounded_number")
+    for key, text in sources.items():
+        if key not in refs and (used - covered) & numbers(text):
+            refs.append(key)
+            covered |= numbers(text)
+    if used - covered:
+        reject("洞察数字未在岗位数据中出现", "ungrounded_number")
     return {**result, "data_refs": refs, "cited": {r: sources[r] for r in refs}}
 
 

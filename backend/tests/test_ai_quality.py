@@ -196,6 +196,13 @@ def test_a4_still_rejects_unquoted_facts(text):
     assert reasons(exc) == ["ungrounded_reply"]
 
 
+def test_a4_deferral_to_hr_always_flags_human_follow_up():
+    # Seen live: the model deferred a salary question but left needs_human false.
+    reply = {"reply": "关于您的问题，我会请招聘 HR 核实后回复您。", "self_confidence": 0.9}
+    result = validate("A4", [reply], {**KB, "first_reply": False})
+    assert result["needs_human"] is True and result["intents"] == ["ask_human"]
+
+
 def test_a4_first_reply_still_requires_ai_identity():
     reply = {"reply": "您好", "self_confidence": 1}
     with pytest.raises(DomainError) as exc:
@@ -301,7 +308,7 @@ def test_a7_grounded_answer_passes_and_cites_data():
     [
         "预计还需 3 周完成招聘。",  # invented forecast
         "AI 评估→面试 33%，转化偏低。",  # wrong rate
-        "计划招聘 2 人，转化率 25%。",  # right number, but conversion not cited
+        "淘汰 7 人，主要因技能不匹配。",  # "7" exists only as days, not people
     ],
 )
 def test_a7_invented_numbers_are_rejected(answer):
@@ -315,6 +322,18 @@ def test_a7_allows_figures_from_position_fields_and_question():
     ctx = {**A7_CTX, "prompt": "Q4 进度如何？", "position": {"level": "P5", "title": "后端"}}
     out = {"answer": "P5 后端岗位 Q4 计划招聘 2 人。", "data_refs": ["headcount"]}
     assert validate("A7", [out], ctx)["answer"] == out["answer"]
+
+
+def test_a7_figures_from_uncited_sources_are_added_to_citations():
+    # Seen live: correct figures, but the model listed only some keys in data_refs.
+    out = {
+        "answer": "计划招聘 2 人，AI 评估→面试 25%。",
+        "data_refs": ["headcount"],
+        "suggestions": ["距期望到岗还有 25 天，HR 添加 6 人，需加快"],
+    }
+    result = validate("A7", [out], A7_CTX)
+    assert result["data_refs"][0] == "headcount"
+    assert {"conversion", "timeline", "channels"} <= set(result["cited"])
 
 
 def test_a7_reference_and_safety_rules():

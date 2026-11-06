@@ -29,7 +29,7 @@ HINTS = {
     "keywords_required": "keywords 至少包含一个职业技能或岗位关键词",
     "answer_required": "answer 必须给出明确结论",
     "data_reference_invalid": "data_refs 只能使用 sources 中已有的键",
-    "ungrounded_number": "answer 和 suggestions 中的每个数字都必须原样出现在所引用的 sources 文本中；不要自行计算新数字，改用文字描述",
+    "ungrounded_number": "answer 和 suggestions 中的每个数字都必须原样出现在 sources 文本中；不要自行计算、估算或预测新数字，改用文字描述",
 }
 
 
