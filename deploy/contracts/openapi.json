@@ -218,6 +218,23 @@
         "title": "ApprovalTrial",
         "type": "object"
       },
+      "Ask": {
+        "additionalProperties": false,
+        "description": "One natural-language instruction typed by an HR into the AI command bar.",
+        "properties": {
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Ask",
+        "type": "object"
+      },
       "AttachCommand": {
         "additionalProperties": false,
         "properties": {
@@ -3725,6 +3742,46 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "ai-tasks"
+        ]
+      }
+    },
+    "/api/v1/hr/ai-intents": {
+      "post": {
+        "description": "Turn one natural-language sentence into an AI task and start it when unambiguous.",
+        "operationId": "ask_api_v1_hr_ai_intents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Ask"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask",
         "tags": [
           "ai-tasks"
         ]

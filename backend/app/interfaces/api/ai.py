@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Request
 
-from app.engine.contracts import JobCommand, StartJob
+from app.engine.contracts import Ask, JobCommand, StartJob
+from app.engine.intent import plan, route_text
 from app.interfaces.api.dependencies import context, write
 from app.kernel.types import DomainError
 
@@ -56,3 +57,26 @@ def command(request: Request, key: str, body: JobCommand):
         s.engine.access(ctx, s.engine.jobs.get(key))
         result = write(request, ctx, s, body.model_dump(), lambda: s.engine.command(ctx, key, body))
         return s.engine.detail(ctx, result["id"])
+
+
+@router.post("/hr/ai-intents")
+def ask(request: Request, body: Ask):
+    """Turn one natural-language sentence into an AI task and start it when unambiguous."""
+    ctx = context(request)
+    container = request.app.state.container
+    with container.scope() as s:
+        s.candidate.authorize(ctx)  # HR only, before spending a model call.
+    # The router call happens with no transaction open, like every other model call.
+    route, source = route_text(container.ai_gateway, body.text, ctx.trace_id)
+    with container.scope() as s:
+        s.candidate.lock(ctx)
+        result = write(
+            request,
+            ctx,
+            s,
+            body.model_dump(),
+            lambda: plan(s, ctx, body.text, route, source),
+        )
+        if result.get("job_id"):
+            result = {**result, "job": s.engine.detail(ctx, result["job_id"])}
+        return result

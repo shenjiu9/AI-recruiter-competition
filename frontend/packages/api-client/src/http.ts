@@ -19,6 +19,7 @@ const routes: Routes = {
   aiJobs: (page) => ({ method: 'GET', path: `/hr/ai-jobs?page=${page}` }),
   aiJob: (id) => ({ method: 'GET', path: `/hr/ai-jobs/${enc(id)}` }),
   startAiJob: (body, opts) => ({ method: 'POST', path: '/hr/ai-jobs', body, opts }),
+  askAi: (body, opts) => ({ method: 'POST', path: '/hr/ai-intents', body, opts }),
   aiJobCommand: (id, body, opts) => ({
     method: 'POST',
     path: `/hr/ai-jobs/${enc(id)}/actions`,

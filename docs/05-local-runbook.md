@@ -44,16 +44,28 @@ docker compose -f ..\dify-local\docker\compose.local.json ps --all
 backend\.venv\Scripts\python.exe deploy/provision_dify_local.py --configure-model --publish
 ```
 
-脚本向本机 Dify 保存并验证模型凭据，再发布七个工作流，将每个工作流的 API Key 保存在后端 `.env` 的 `DIFY_API_KEYS` JSON 中。重复执行复用已生成的应用与 API Key；模型密钥变更使用指纹识别，不回显密钥。模型地址与名称依据 [DeepSeek 官方接口说明](https://api-docs.deepseek.com/)。
+脚本向本机 Dify 保存并验证模型凭据，再发布 A0 指令路由和 A1–A7 共八个工作流，将每个工作流的 API Key 保存在后端 `.env` 的 `DIFY_API_KEYS` JSON 中。重复执行复用已生成的应用与 API Key；模型密钥变更使用指纹识别，不回显密钥。模型地址与名称依据 [DeepSeek 官方接口说明](https://api-docs.deepseek.com/)。
 
 本机已开启 AI worker 和七个组件，采用人工复核模式：显式发起任务后，后台调用真实模型；业务写入须复核后确认。单次 Dify 请求超时为 120 秒。新环境默认仍关闭 AI worker；需要按本机验证步骤配置后启用。影子模式只记录结果，质量验收后再决定是否允许特定节点自动执行。
+
+### 一句话发起 AI 任务
+
+HR 端顶部的 AI 指令栏（⌘K / Ctrl+K）和“AI 任务与复核”页可以直接输入一句话，如“白班客服还差几个人”“评估一下张三”。后端 `POST /api/v1/hr/ai-intents` 先由 A0 工作流识别要做的任务，再在当前账号可见的岗位、候选人、应聘与面试中匹配对象：唯一匹配时直接创建任务，多个或缺少对象时返回可选项。A0 只看到脱敏后的这句话，看不到业务数据；它给出的姓名、岗位必须在原句中逐字出现，否则作废。A0 未发布或调用失败时自动改用关键词规则，功能不中断。创建出的任务与手动发起完全相同，仍经过权限、授权、阶段、组件开关和人工复核。
+
+`deploy/dify/workflows/A0.yml` 已随代码提交。已部署的本机环境执行一次下列命令导入并发布 A0，后端 `DIFY_API_KEYS` 会自动加入 A0 的 Key，重启 API 后生效：
+
+```powershell
+backend\.venv\Scripts\python.exe deploy/provision_dify_local.py --sync-drafts --publish
+```
+
+路由效果可用 `DEEPSEEK_API_KEY=... python backend/scripts/eval_router_direct.py --report test-results/router.json` 直接对 DeepSeek 抽查。
 
 模型分配保存在 `deploy/dify/model-routing.json`。当前两种模型都已通过账号可用性和 Dify 插件检查：
 
 | 工作流 | 模型 | 当前用途 |
 | --- | --- | --- |
 | A1、A5、A6、A7 | `deepseek-v4-pro` | 画像／JD、证据评估、面试记录整理、岗位数据分析 |
-| A2、A3、A4 | `deepseek-flash` | 搜索关键词建议、职业字段提取、受限知识答复 |
+| A0、A2、A3、A4 | `deepseek-flash` | 指令路由、搜索关键词建议、职业字段提取、受限知识答复 |
 
 两个模型均使用非思考模式和 JSON 输出，输出长度按组件设置；这是当前子功能的运行配置，不代表完整工作流的质量评测结论。调整路由后需重新生成 DSL、同步草稿并发布。
 

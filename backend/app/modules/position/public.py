@@ -184,6 +184,14 @@ class PositionFacade(PositionContent):
             "pause_mode": pause,
         }
 
+    def editable(self, ctx):
+        """Positions the requester may run HR-side AI tasks on, newest first."""
+        return [
+            {"id": p["id"], "name": p["fields"]["title"], "status": p["status"]}
+            for p in reversed(self.store.all())
+            if self._visible(ctx, p) and self._editor(ctx, p)
+        ]
+
     def search(
         self, ctx, page, size, status=None, view="all", query="", dept="", owner="", city=""
     ):

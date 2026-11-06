@@ -18,8 +18,8 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, Tooltip } from 'antd';
-import { useEffect, useState } from 'react';
+import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, Tooltip, type InputRef } from 'antd';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '@recruiter/api-client';
 import { useSession } from '@recruiter/auth';
@@ -38,6 +38,25 @@ export function Shell() {
   const compact = !useMediaQuery('(min-width: 992px)');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [noticeReveal, setNoticeReveal] = useState(0);
+  const [command, setCommand] = useState('');
+  const commandRef = useRef<InputRef>(null);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        commandRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const sendCommand = () => {
+    const text = command.trim();
+    if (!text) return;
+    setCommand('');
+    commandRef.current?.blur();
+    nav('/ai-jobs', { state: { ask: text } });
+  };
   useEffect(() => setDrawerOpen(false), [loc.pathname]);
   const { data: summary } = useQuery({
     queryKey: qk.workbench.summary(),
@@ -177,6 +196,22 @@ export function Shell() {
               if (q.trim()) nav(`/candidates?${key}=${encodeURIComponent(q.trim())}`);
             }}
           />
+          {!compact && <Input
+            className="app-command"
+            prefix={<ThunderboltOutlined />}
+            placeholder="让 AI 做件事…"
+            aria-label="AI 指令栏"
+            ref={commandRef}
+            value={command}
+            maxLength={4000}
+            onChange={(e) => setCommand(e.target.value)}
+            onPressEnter={(e) => {
+              if (!e.nativeEvent.isComposing) sendCommand();
+            }}
+            autoComplete="off"
+            suffix={<kbd>⌘ K</kbd>}
+            style={{ maxWidth: 300, minWidth: 160 }}
+          />}
           <Button
             className="app-ai-entry"
             aria-label="AI 助手"
