@@ -1,19 +1,20 @@
 import {
-  AuditOutlined,
+  ApartmentOutlined,
   BellOutlined,
   CalendarOutlined,
-  ClusterOutlined,
-  ControlOutlined,
+  DashboardOutlined,
   FileAddOutlined,
+  FileSearchOutlined,
   FundOutlined,
-  InboxOutlined,
+  IdcardOutlined,
   MenuOutlined,
-  MoneyCollectOutlined,
+  PayCircleOutlined,
   RobotOutlined,
   ShareAltOutlined,
-  SolutionOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
   TrophyOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, type MenuProps } from 'antd';
@@ -64,22 +65,22 @@ export function Shell() {
   const settings: MenuItem[] = [
     canAutomation && {
       key: '/settings/automation',
-      icon: <ControlOutlined />,
+      icon: <ThunderboltOutlined />,
       label: '自动化策略',
     },
     hasRole('hrbp', 'headcount_owner') && {
       key: '/settings/headcount',
-      icon: <AuditOutlined />,
+      icon: <UsergroupAddOutlined />,
       label: '编制管理',
     },
     hasRole('admin', 'recruiting_lead') && {
       key: '/settings/organization',
-      icon: <ClusterOutlined />,
+      icon: <ApartmentOutlined />,
       label: '组织与权限',
     },
     hasRole('recruiting_lead', 'compensation_owner') && {
       key: '/settings/salary',
-      icon: <MoneyCollectOutlined />,
+      icon: <PayCircleOutlined />,
       label: '职级薪资表',
     },
   ].filter(Boolean) as MenuItem[];
@@ -88,7 +89,7 @@ export function Shell() {
   const items: MenuItem[] = [
     {
       key: '/workbench',
-      icon: <InboxOutlined />,
+      icon: <DashboardOutlined />,
       label: (
         <span className="hr-nav-label">
           AI 工作台
@@ -105,11 +106,11 @@ export function Shell() {
       label: '招聘流程',
       children: [
         { key: '/requisitions', icon: <FileAddOutlined />, label: '招聘需求管理' },
-        { key: '/positions', icon: <SolutionOutlined />, label: '岗位管理' },
+        { key: '/positions', icon: <IdcardOutlined />, label: '岗位管理' },
         { key: '/candidates', icon: <TeamOutlined />, label: '候选人' },
         { key: '/interviews', icon: <CalendarOutlined />, label: '面试' },
         { key: '/hiring', icon: <TrophyOutlined />, label: '录用与移交' },
-        { key: '/ai-jobs', icon: <RobotOutlined />, label: 'AI 任务与复核' },
+        { key: '/ai-jobs', icon: <FileSearchOutlined />, label: 'AI 任务与复核' },
       ],
     },
     {
