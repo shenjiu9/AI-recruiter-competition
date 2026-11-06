@@ -26,8 +26,16 @@ test('workspace shows real totals, searches candidates and opens the notificatio
   await page.getByRole('button', { name: 'AI 助手', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'AI 任务与复核', exact: true })).toBeVisible();
   await page.getByLabel('全局搜索', { exact: true }).fill('视觉回归查询');
+  const searchResult = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/candidates') && url.searchParams.get('query') === '视觉回归查询';
+  });
   await page.getByLabel('全局搜索', { exact: true }).press('Enter');
-  await expect(page).toHaveURL(/\/candidates\?q=/);
+  await expect(page).toHaveURL(/\/candidates\?query=/);
+  expect((await searchResult).ok()).toBeTruthy();
+  await expect(page.getByRole('searchbox', { name: '搜索候选人', exact: true })).toHaveValue(
+    '视觉回归查询',
+  );
   await expect(page.getByRole('heading', { name: '候选人', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('desktop-workspace.png'), fullPage: true });
 });

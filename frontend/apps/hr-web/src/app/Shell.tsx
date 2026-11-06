@@ -121,7 +121,10 @@ export function Shell() {
             placeholder="搜索候选人"
             allowClear
             aria-label="全局搜索"
-            onSearch={(q) => q.trim() && nav(`/candidates?q=${encodeURIComponent(q.trim())}`)}
+            onSearch={(q) => {
+              const key = import.meta.env.VITE_USE_MOCK === 'false' ? 'query' : 'q';
+              if (q.trim()) nav(`/candidates?${key}=${encodeURIComponent(q.trim())}`);
+            }}
           />
           <Button
             className="app-ai-entry"
