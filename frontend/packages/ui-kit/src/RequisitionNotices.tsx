@@ -1,3 +1,4 @@
+import { ActionButton } from './controls';
 import { useEffect, useState } from 'react';
 import { useApi, toAppError, type ApiClient } from '@recruiter/api-client';
 
@@ -38,7 +39,7 @@ export function RequisitionNotices({ onOpen }: { onOpen: (id: string) => void })
     };
   }, [api]);
   return (
-    <details style={{ marginBottom: 16, padding: 12 }}>
+    <details id="requisition-notices" className="rc-notices">
       <summary>审批与交接消息（{items.length}）</summary>
       {error && <p role="alert">消息加载失败：{error}</p>}
       {!items.length && !error && <p>暂无消息</p>}
@@ -46,9 +47,9 @@ export function RequisitionNotices({ onOpen }: { onOpen: (id: string) => void })
       <ul>
         {items.map((item) => (
           <li key={item.id}>
-            <button type="button" onClick={() => onOpen(item.requisition_id)}>
+            <ActionButton type="button" onClick={() => onOpen(item.requisition_id)}>
               {TRANSFER_ACTIONS[item.action] ?? item.action} · {item.title}
-            </button>{' '}
+            </ActionButton>{' '}
             · {new Date(item.at).toLocaleString()}
           </li>
         ))}

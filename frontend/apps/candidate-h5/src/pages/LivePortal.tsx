@@ -1,5 +1,6 @@
+import '@recruiter/mobile-ui';
 import { useRef, useState } from 'react';
-import { Button, Dialog, NavBar, NoticeBar } from 'antd-mobile';
+import { Button, Dialog, NoticeBar } from 'antd-mobile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useApi,
@@ -68,7 +69,7 @@ export function LivePortal() {
   }
   if (!token || query.isError)
     return (
-      <main style={{ padding: 24 }}>
+      <main className="rm-portal-closed">
         <h1>专属链接不可用</h1>
         <p>
           {query.isError
@@ -85,9 +86,21 @@ export function LivePortal() {
   const confirm = (action: ConversationCommand['action'], message: string) =>
     void Dialog.confirm({ content: message, onConfirm: () => run(action) });
   return (
-    <main style={{ maxWidth: 680, margin: 'auto', padding: 16, paddingBottom: 80 }}>
-      <NavBar back={null}>招聘沟通与个人资料</NavBar>
-      <h1 style={{ fontSize: 22 }}>{c.profile?.name}，您好</h1>
+    <main className="rm-candidate-page">
+      <div className="rm-candidate-brand">
+        <b>AI 招聘官</b>
+        <span>YOUR NEXT CHAPTER</span>
+      </div>
+      <header className="rm-candidate-hero">
+        <small>招聘沟通与个人资料</small>
+        <h1>{c.profile?.name}，您好</h1>
+        <p>每一次交流，离合适的机会更近一步。</p>
+      </header>
+      <nav className="rm-candidate-jump" aria-label="应聘快捷导航">
+        <a href="#candidate-applications">我的应聘</a>
+        <a href="#candidate-chat">招聘沟通</a>
+        <a href="#candidate-profile">个人资料</a>
+      </nav>
       <NoticeBar
         content={
           c.mode === 'hr'
@@ -138,7 +151,7 @@ export function LivePortal() {
           {c.do_not_contact ? '已要求不再联系' : '不再联系我'}
         </Button>
       </section>
-      <section className="rm-card">
+      <section className="rm-card" id="candidate-applications">
         <h2>我的应聘</h2>
         {c.applications?.length ? (
           c.applications.map((a) => (
@@ -151,26 +164,18 @@ export function LivePortal() {
         )}
       </section>
       <CandidateInterviews token={token} />
-      <section className="rm-card">
+      <section className="rm-card" id="candidate-chat">
         <h2>与招聘 HR 沟通</h2>
         <Button disabled={locked} onClick={() => run('ask_human')}>
           请求人工处理
         </Button>
-        <div role="log" aria-label="聊天记录">
+        <div role="log" aria-label="聊天记录" className="rm-chat-records">
           {c.messages.map((m) => (
-            <article
-              key={m.id}
-              style={{
-                padding: 12,
-                background: m.sender === 'candidate' ? '#edf5ff' : '#f5f5f5',
-                marginBlock: 10,
-                borderRadius: 8,
-              }}
-            >
+            <article key={m.id} data-sender={m.sender}>
               <strong>
                 {m.sender === 'candidate' ? '我' : m.sender === 'ai' ? 'AI 招聘助手' : '招聘 HR'}
-              </strong>{' '}
-              · {new Date(m.created_at).toLocaleString()}
+              </strong>
+              <time dateTime={m.created_at}>{new Date(m.created_at).toLocaleString()}</time>
               <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{m.content}</p>
               <small>
                 {m.application_ids
@@ -241,7 +246,7 @@ export function LivePortal() {
           刷新最新记录
         </Button>
       )}
-      <section className="rm-card">
+      <section className="rm-card" id="candidate-profile">
         <h2>查看和管理我的资料</h2>
         <details>
           <summary>查看已保存资料</summary>

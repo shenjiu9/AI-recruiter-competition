@@ -1,3 +1,15 @@
+import { Card, Statistic, Button, Tag, Empty, Skeleton, Alert, Avatar } from 'antd';
+import {
+  ArrowRightOutlined,
+  ThunderboltOutlined,
+  CheckCircleOutlined,
+  TeamOutlined,
+  SolutionOutlined,
+  FileDoneOutlined,
+  ScheduleOutlined,
+  AuditOutlined,
+} from '@ant-design/icons';
+import { ActionButton } from './controls';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DirectoryPersonPicker } from './DirectoryPersonPicker';
 import {
@@ -32,10 +44,10 @@ const input = {
   marginBlock: 8,
 };
 const section = {
-  background: '#fff',
+  background: 'var(--rc-surface)',
   padding: 16,
-  border: '1px solid #dfe5ec',
-  borderRadius: 10,
+  border: '1px solid var(--rc-line)',
+  borderRadius: 16,
   marginBlock: 16,
 };
 
@@ -84,7 +96,7 @@ export function HiringList({ filters = {} }: { filters?: Record<string, string> 
   const [page, setPage] = useState(1);
   const q = useLiveData(JSON.stringify([filters, page]), () => api.liveHires(page, filters));
   return (
-    <main style={{ maxWidth: 1100, margin: 'auto', padding: 16 }}>
+    <main className="rc-live-page" style={{ maxWidth: 1100, margin: 'auto', padding: 16 }}>
       <h1>录用决定与移交</h1>
       <p>经理查看完整面评后决定，审批通过后由 HR 移交现有流程并回填结果。</p>
       {q.error && <p role="alert">{q.error}</p>}
@@ -107,13 +119,13 @@ export function HiringList({ filters = {} }: { filters?: Record<string, string> 
         </article>
       ))}
       {q.data?.total === 0 && <p>暂无可见录用记录。</p>}
-      <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+      <ActionButton disabled={page === 1} onClick={() => setPage(page - 1)}>
         上一页
-      </button>{' '}
+      </ActionButton>{' '}
       第 {page} 页{' '}
-      <button disabled={page * 20 >= (q.data?.total ?? 0)} onClick={() => setPage(page + 1)}>
+      <ActionButton disabled={page * 20 >= (q.data?.total ?? 0)} onClick={() => setPage(page + 1)}>
         下一页
-      </button>
+      </ActionButton>
     </main>
   );
 }
@@ -122,7 +134,7 @@ export function HiringDetail({ id }: { id: string }) {
   const api = useApi();
   const q = useLiveData(id, () => api.liveHire(id));
   return (
-    <main style={{ maxWidth: 900, margin: 'auto', padding: 16 }}>
+    <main className="rc-live-page" style={{ maxWidth: 900, margin: 'auto', padding: 16 }}>
       <a href="/hiring">返回录用列表</a>
       {q.error ? (
         <p role="alert">{q.error}</p>
@@ -320,7 +332,7 @@ function HireForm({
             我已查看面评汇总并核实本次操作内容
           </label>
           {h.can_prepare && (
-            <button
+            <ActionButton
               disabled={!verified || !start || !owner || !evidence}
               onClick={() =>
                 run('prepare', {
@@ -333,7 +345,7 @@ function HireForm({
               }
             >
               保存核实信息
-            </button>
+            </ActionButton>
           )}
           <label>
             决定 / 驳回 / 结果原因
@@ -348,18 +360,18 @@ function HireForm({
           {h.can_decide && (
             <>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <button
+                <ActionButton
                   disabled={!verified || !h.facts}
                   onClick={() => run('decide', { decision: 'hire' })}
                 >
                   决定录用并发起审批
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
                   disabled={!verified || !reason}
                   onClick={() => run('decide', { decision: 'reject' })}
                 >
                   决定不录用
-                </button>
+                </ActionButton>
               </div>
               <details style={{ marginTop: 12 }}>
                 <summary>追加一轮面试</summary>
@@ -388,41 +400,41 @@ function HireForm({
                     onChange={(e) => setExtra({ ...extra, criteria: e.target.value })}
                   />
                 </label>
-                <button
+                <ActionButton
                   disabled={!verified || !reason || !extra.interviewers.length}
                   onClick={() => run('decide', { decision: 'extra_round', extra_round: extra })}
                 >
                   确认追加面试
-                </button>
+                </ActionButton>
               </details>
             </>
           )}
           {h.can_approve && (
             <div style={{ display: 'flex', gap: 12 }}>
-              <button disabled={!verified} onClick={() => run('approve')}>
+              <ActionButton disabled={!verified} onClick={() => run('approve')}>
                 通过录用审批
-              </button>
-              <button disabled={!verified || !reason} onClick={() => run('reject')}>
+              </ActionButton>
+              <ActionButton disabled={!verified || !reason} onClick={() => run('reject')}>
                 驳回录用审批
-              </button>
+              </ActionButton>
             </div>
           )}
           {h.can_withdraw && (
-            <button disabled={!reason} onClick={() => run('withdraw')}>
+            <ActionButton disabled={!reason} onClick={() => run('withdraw')}>
               撤回本次录用审批
-            </button>
+            </ActionButton>
           )}
           {h.can_handover && (
             <>
               <p>请先把移交单交给负责 HR，再登记实际交接凭证。系统尚未接入飞书发送。</p>
-              <button
+              <ActionButton
                 disabled={!verified || !evidence}
                 onClick={() =>
                   run('handover', { evidence, offer_owner: owner || h.facts?.offer_owner })
                 }
               >
                 登记已实际移交
-              </button>
+              </ActionButton>
             </>
           )}
           {h.can_result && (
@@ -447,26 +459,26 @@ function HireForm({
                   ))}
                 </select>
               </label>
-              <button
+              <ActionButton
                 disabled={!verified}
                 onClick={() =>
                   run('result', { result, ...(start ? { expected_start: start } : {}) })
                 }
               >
                 保存录用结果
-              </button>
+              </ActionButton>
             </>
           )}
         </fieldset>
       </section>
       {op.error && <p role="alert">{op.error}</p>}
       {op.retry && (
-        <button onClick={op.retryAction} disabled={op.busy}>
+        <ActionButton onClick={op.retryAction} disabled={op.busy}>
           重试本次操作
-        </button>
+        </ActionButton>
       )}
       {op.conflict && (
-        <button
+        <ActionButton
           onClick={async () => {
             await refresh();
             op.refreshed();
@@ -474,7 +486,7 @@ function HireForm({
           }}
         >
           刷新录用记录
-        </button>
+        </ActionButton>
       )}
       <section style={section}>
         <h2>审批记录</h2>
@@ -497,7 +509,7 @@ function HireForm({
       {h.handoff && (
         <section style={section}>
           <h2>录用移交单</h2>
-          <button
+          <ActionButton
             onClick={async () => {
               try {
                 const blob = await api.downloadHireHandoff(h.id);
@@ -514,7 +526,7 @@ function HireForm({
             }}
           >
             下载移交单（Excel）
-          </button>
+          </ActionButton>
           {downloadError && <p role="alert">{downloadError}</p>}
           <p>{h.handoff.delivery === 'manual_confirmed' ? '已人工确认移交' : '待人工移交'}</p>
           <p>
@@ -552,59 +564,209 @@ function HireForm({
 export function LiveWorkbench() {
   const api = useApi();
   const q = useLiveData('workbench', () => api.liveWorkbench());
-  const labels: Record<string, string> = {
-    open_positions: '招聘中岗位',
-    remaining: '可招人数',
-    cards: '待处理卡片',
-    pending_handoffs: '待移交',
-    pending_results: '待回填结果',
-    my_approvals: '待我审批',
-  };
+  const metrics = [
+    { key: 'open_positions', label: '招聘中岗位', icon: <SolutionOutlined /> },
+    { key: 'remaining', label: '可招人数', icon: <TeamOutlined /> },
+    { key: 'cards', label: '待处理卡片', icon: <AuditOutlined /> },
+    { key: 'my_approvals', label: '待我审批', icon: <FileDoneOutlined /> },
+    { key: 'pending_handoffs', label: '待移交', icon: <ScheduleOutlined /> },
+    { key: 'pending_results', label: '待回填结果', icon: <CheckCircleOutlined /> },
+  ];
+  const stages = [
+    { key: 'talking', label: '沟通' },
+    { key: 'ai_eval', label: '评估' },
+    { key: 'interview', label: '面试' },
+    { key: 'manager_eval', label: '业务评估' },
+  ];
   return (
-    <main style={{ maxWidth: 1200, margin: 'auto', padding: 16 }}>
-      <h1>招聘工作台</h1>
-      <p>
-        以下为当前权限内的真实数据。<a href="/ai-jobs">查看 AI 任务与复核</a>
-      </p>
-      <a href="/hiring">录用决定、移交与结果回填</a>
-      {q.error && <p role="alert">{q.error}</p>}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        {Object.entries(q.data?.counts ?? {}).map(([k, v]) => (
-          <p key={k}>
-            {labels[k]}：<strong>{v}</strong>
-          </p>
+    <main className="rc-workbench">
+      <header className="rc-overview-header">
+        <div>
+          <span className="rc-eyebrow">YOUR RECRUITING DAY</span>
+          <h1>招聘工作台</h1>
+          <p>从每一次沟通开始，让合适的人与机会相遇。</p>
+        </div>
+        <span className="rc-date">
+          <ScheduleOutlined />{' '}
+          {new Date().toLocaleDateString('zh-CN', {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long',
+          })}
+        </span>
+      </header>
+      {q.error && (
+        <Alert
+          type="error"
+          showIcon
+          message={q.error}
+          action={<Button onClick={() => void q.refresh()}>重新加载</Button>}
+        />
+      )}
+      <div className="rc-metrics">
+        {metrics.map((m) => (
+          <Card className="rc-metric" key={m.key}>
+            <div className="rc-metric-top">
+              <span>{m.label}</span>
+              {m.icon}
+            </div>
+            {q.data ? (
+              <Statistic value={q.data.counts[m.key] ?? 0} />
+            ) : (
+              <Skeleton.Input active size="small" />
+            )}
+          </Card>
         ))}
       </div>
-      <h2>待处理决策卡</h2>
-      {q.data?.cards.map((c) => (
-        <DecisionItem key={c.id} c={c} refresh={q.refresh} />
-      ))}
-      {q.data?.cards.length === 0 && <p>暂无待处理卡片。</p>}
-      <h2>录用待办</h2>
-      {q.data?.hires.map((h) => (
-        <p key={h.id}>
-          <a href={`/hiring/${h.id}`}>
-            {h.candidate_name} · {h.position_name}
-          </a>{' '}
-          · {HIRE_STATUS[h.status]}
-        </p>
-      ))}
-      <h2>岗位与招聘进展</h2>
-      {q.data?.positions.map((p) => (
-        <article key={p.id} style={section}>
-          <a href={`/positions/${p.id}`}>{p.name}</a>
-          <p>
-            计划 {p.planned} · 已录用 {p.hired} · 可招 {p.remaining}
+      <div className="rc-dashboard-grid">
+        <div className="rc-dashboard-main">
+          <Card>
+            <div className="rc-section-heading">
+              <div>
+                <h2>待处理决策卡</h2>
+                <p>把注意力留给需要你判断的事情</p>
+              </div>
+              <Tag bordered={false} color="cyan">
+                {q.data?.cards.length ?? '—'} 项待办
+              </Tag>
+            </div>
+            {!q.data ? (
+              <Skeleton active />
+            ) : q.data.cards.length ? (
+              q.data.cards.map((c) => <DecisionItem key={c.id} c={c} refresh={q.refresh} />)
+            ) : (
+              <div className="rc-empty">
+                <div className="rc-empty-icon">
+                  <CheckCircleOutlined />
+                </div>
+                <h3>当前待办已清空</h3>
+                <p>暂无待处理卡片。</p>
+                <span className="muted">新的决策与提醒会出现在这里</span>
+              </div>
+            )}
+          </Card>
+          <Card>
+            <div className="rc-section-heading">
+              <div>
+                <h2>岗位与招聘进展</h2>
+                <p>从沟通到面试，进度一目了然</p>
+              </div>
+              <a href="/positions">
+                全部岗位 <ArrowRightOutlined />
+              </a>
+            </div>
+            {!q.data ? (
+              <Skeleton active />
+            ) : !q.data.positions.length ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无可见岗位，审批通过后会生成岗位。"
+              />
+            ) : (
+              q.data.positions.map((p) => (
+                <article className="rc-position-row" key={p.id}>
+                  <div className="rc-position-row-title">
+                    <a href={`/positions/${p.id}`}>{p.name}</a>
+                    <Tag bordered={false} color="cyan">
+                      可招 {p.remaining} 人
+                    </Tag>
+                  </div>
+                  <p className="rc-position-meta">
+                    计划 {p.planned} 人 <span> · </span> 已录用 {p.hired} 人
+                  </p>
+                  <div className="rc-stage-track">
+                    {stages.map((stage) => (
+                      <div
+                        className="rc-stage-cell"
+                        data-active={!!p.stages[stage.key]}
+                        key={stage.key}
+                      >
+                        <span>{stage.label}</span>
+                        <strong>{p.stages[stage.key] ?? 0}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))
+            )}
+          </Card>
+          <Card>
+            <div className="rc-section-heading">
+              <div>
+                <h2>录用待办</h2>
+                <p>及时完成审批、移交与结果回填</p>
+              </div>
+              <a href="/hiring">
+                查看全部 <ArrowRightOutlined />
+              </a>
+            </div>
+            {q.data?.hires.length ? (
+              q.data.hires.map((h) => (
+                <div className="rc-hire-row" key={h.id}>
+                  <Avatar style={{ background: 'var(--rc-brand-soft)', color: 'var(--rc-brand)' }}>
+                    {h.candidate_name.slice(0, 1)}
+                  </Avatar>
+                  <a href={`/hiring/${h.id}`}>
+                    {h.candidate_name} · {h.position_name}
+                  </a>
+                  <Tag style={{ marginLeft: 'auto' }}>{HIRE_STATUS[h.status]}</Tag>
+                </div>
+              ))
+            ) : (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无录用待办" />
+            )}
+          </Card>
+        </div>
+        <aside className="rc-dashboard-rail">
+          <Card className="rc-assistant-card">
+            <div className="rc-assistant-orbit" aria-hidden="true" />
+            <span className="rc-eyebrow">YOUR AI COPILOT</span>
+            <ThunderboltOutlined style={{ fontSize: 28, color: 'var(--rc-ai)' }} />
+            <h2>
+              多一点洞察，
+              <br />
+              少一点重复。
+            </h2>
+            <p>
+              让 AI 协助整理信息与证据，
+              <br />
+              重要的决定，始终由你把握。
+            </p>
+            <Button type="primary" href="/ai-jobs" icon={<ArrowRightOutlined />}>
+              查看 AI 任务与复核
+            </Button>
+          </Card>
+          <Card>
+            <div className="rc-section-heading">
+              <h2>快捷入口</h2>
+            </div>
+            <div className="rc-quicklinks">
+              <a className="rc-quicklink" href="/positions">
+                <SolutionOutlined />
+                <span>岗位与画像</span>
+                <ArrowRightOutlined />
+              </a>
+              <a className="rc-quicklink" href="/interviews">
+                <ScheduleOutlined />
+                <span>面试与面评</span>
+                <ArrowRightOutlined />
+              </a>
+              <a className="rc-quicklink" href="/hiring">
+                <FileDoneOutlined />
+                <span>录用决定、移交与结果回填</span>
+                <ArrowRightOutlined />
+              </a>
+            </div>
+          </Card>
+          <p style={{ fontSize: 12, color: 'var(--rc-ink-3)', padding: '0 6px', margin: 0 }}>
+            仅展示当前账号权限范围内的数据。
           </p>
-          <p>
-            沟通 {p.stages.talking ?? 0} · 评估 {p.stages.ai_eval ?? 0} · 面试{' '}
-            {p.stages.interview ?? 0} · 业务评估 {p.stages.manager_eval ?? 0}
-          </p>
-        </article>
-      ))}
+        </aside>
+      </div>
     </main>
   );
 }
+
 function DecisionItem({ c, refresh }: { c: LiveCard; refresh: () => Promise<unknown> }) {
   const api = useApi();
   const [reason, setReason] = useState('');
@@ -630,7 +792,7 @@ function DecisionItem({ c, refresh }: { c: LiveCard; refresh: () => Promise<unkn
           />
         </label>
         {c.options.map((o) => (
-          <button
+          <ActionButton
             style={{ marginRight: 10 }}
             disabled={!reason}
             key={o}
@@ -652,11 +814,11 @@ function DecisionItem({ c, refresh }: { c: LiveCard; refresh: () => Promise<unkn
                 } as Record<string, string>
               )[o]
             }
-          </button>
+          </ActionButton>
         ))}
       </fieldset>
       {op.error && <p role="alert">{op.error}</p>}
-      {op.retry && <button onClick={op.retryAction}>重试本次操作</button>}
+      {op.retry && <ActionButton onClick={op.retryAction}>重试本次操作</ActionButton>}
     </article>
   );
 }

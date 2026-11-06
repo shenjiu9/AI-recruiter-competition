@@ -1,4 +1,5 @@
 import './styles.css';
+import './workspace.css';
 
 export { RecruiterTheme } from './theme/RecruiterTheme';
 export { antdThemeConfig, palette, fontFamily, type Mode } from './theme/tokens';

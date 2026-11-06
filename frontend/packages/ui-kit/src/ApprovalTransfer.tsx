@@ -1,3 +1,4 @@
+import { ActionButton } from './controls';
 import { useEffect, useRef, useState } from 'react';
 import './ApprovalTransfer.css';
 import {
@@ -141,24 +142,24 @@ export function ApprovalTransfer({
       )}
       {total > 20 && (
         <div>
-          <button
+          <ActionButton
             type="button"
             disabled={locked || loading || page === 1}
             onClick={() => setPage(page - 1)}
           >
             上一页
-          </button>
+          </ActionButton>
           <span>
             {' '}
             第 {page} 页 · 共 {total} 人{' '}
           </span>
-          <button
+          <ActionButton
             type="button"
             disabled={locked || loading || page * 20 >= total}
             onClick={() => setPage(page + 1)}
           >
             下一页
-          </button>
+          </ActionButton>
         </div>
       )}
       <label>
@@ -174,14 +175,14 @@ export function ApprovalTransfer({
       </label>
       {error && <p role="alert">{error}</p>}
       {retry && <p>尚未收到确定结果，请重试原转交请求。</p>}
-      <button
+      <ActionButton
         type="submit"
         disabled={
           busy || conflict || !target || !reason.trim() || (!retry && (loading || !!searchError))
         }
       >
         {busy ? '正在转交…' : retry ? '重试转交' : '确认转交'}
-      </button>
+      </ActionButton>
     </form>
   );
 }

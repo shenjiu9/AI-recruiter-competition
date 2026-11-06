@@ -2,6 +2,8 @@ import { App as AntApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { useEffect, useState, type ReactNode } from 'react';
 import { antdThemeConfig, type Mode } from './tokens';
+import '../styles.css';
+import '../workspace.css';
 
 function preferredMode(): Mode {
   const forced = new URLSearchParams(globalThis.location?.search ?? '').get('theme');
@@ -22,7 +24,7 @@ export function RecruiterTheme({ children }: { children: ReactNode }) {
     document.documentElement.dataset.theme = mode;
   }, [mode]);
   return (
-    <ConfigProvider theme={antdThemeConfig(mode)} locale={zhCN}>
+    <ConfigProvider theme={antdThemeConfig(mode)} locale={zhCN} button={{ autoInsertSpace: false }}>
       <AntApp>{children}</AntApp>
     </ConfigProvider>
   );

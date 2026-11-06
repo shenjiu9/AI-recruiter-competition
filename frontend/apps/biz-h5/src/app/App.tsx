@@ -1,3 +1,5 @@
+import { BusinessShell } from './BusinessShell';
+import { RecruiterTheme } from '@recruiter/ui-kit/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ApiProvider, type ApiConfig } from '@recruiter/api-client';
@@ -18,17 +20,22 @@ const apiConfig: ApiConfig = {
 };
 
 const router = createBrowserRouter([
-  { path: '/', element: <InboxPage /> },
-  { path: '/brief/:appId', element: <BriefPage /> },
-  { path: '/feedback/:appId', element: <FeedbackPage /> },
-  { path: '/positions', element: <PositionsPage /> },
-  { path: '/interviews', element: <InterviewsPage /> },
-  { path: '/hiring', element: <HiringPage /> },
-  { path: '/hiring/:id', element: <HiringPage /> },
-  { path: '/workbench', element: <WorkbenchPage /> },
-  { path: '/ai-jobs', element: <AiJobs business /> },
-  { path: '/interviews/:id', element: <InterviewPage /> },
-  { path: '/positions/:id', element: <PositionReviewPage /> },
+  {
+    element: <BusinessShell />,
+    children: [
+      { path: '/', element: <InboxPage /> },
+      { path: '/brief/:appId', element: <BriefPage /> },
+      { path: '/feedback/:appId', element: <FeedbackPage /> },
+      { path: '/positions', element: <PositionsPage /> },
+      { path: '/interviews', element: <InterviewsPage /> },
+      { path: '/hiring', element: <HiringPage /> },
+      { path: '/hiring/:id', element: <HiringPage /> },
+      { path: '/workbench', element: <WorkbenchPage /> },
+      { path: '/ai-jobs', element: <AiJobs business /> },
+      { path: '/interviews/:id', element: <InterviewPage /> },
+      { path: '/positions/:id', element: <PositionReviewPage /> },
+    ],
+  },
 ]);
 
 /** 飞书内 H5：业务方只看需要他决定的事，30 秒内完成一个决定 */
@@ -47,21 +54,23 @@ function AuthenticatedApp() {
 
 export function App() {
   return (
-    <AuthProvider
-      mockSession={
-        apiConfig.mock
-          ? {
-              userId: 'u-zhouzh',
-              name: '周振华',
-              roles: ['hiring_manager', 'interviewer'],
-              token: 'demo',
-            }
-          : undefined
-      }
-    >
-      <SessionGate mock={apiConfig.mock} baseUrl={apiConfig.baseUrl}>
-        <AuthenticatedApp />
-      </SessionGate>
-    </AuthProvider>
+    <RecruiterTheme>
+      <AuthProvider
+        mockSession={
+          apiConfig.mock
+            ? {
+                userId: 'u-zhouzh',
+                name: '周振华',
+                roles: ['hiring_manager', 'interviewer'],
+                token: 'demo',
+              }
+            : undefined
+        }
+      >
+        <SessionGate mock={apiConfig.mock} baseUrl={apiConfig.baseUrl}>
+          <AuthenticatedApp />
+        </SessionGate>
+      </AuthProvider>
+    </RecruiterTheme>
   );
 }

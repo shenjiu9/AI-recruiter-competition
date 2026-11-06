@@ -1,9 +1,10 @@
+import { ActionButton } from './controls';
 import { useEffect, useState } from 'react';
 import { useApi, toAppError, type ApiClient } from '@recruiter/api-client';
 
 type Result = Awaited<ReturnType<ApiClient['formUsers']>>;
 
-/** Shared native controls keep the mobile bundle independent of desktop Ant Design. */
+/** Shared directory selection preserves native select semantics across desktop and mobile. */
 export function DirectoryPersonPicker({
   id,
   label,
@@ -116,7 +117,7 @@ export function DirectoryPersonPicker({
               {u.name ?? u.id}
               {data && !u.available ? '（已失效或超出范围）' : ''}
             </span>
-            <button
+            <ActionButton
               type="button"
               disabled={disabled}
               onClick={() =>
@@ -128,7 +129,7 @@ export function DirectoryPersonPicker({
               aria-label={`移除 ${u.name ?? u.id}`}
             >
               移除
-            </button>
+            </ActionButton>
           </div>
         ))}
       {!dept ? (
@@ -138,9 +139,9 @@ export function DirectoryPersonPicker({
       ) : current.error ? (
         <div role="alert">
           {current.error}{' '}
-          <button type="button" disabled={disabled} onClick={() => setRevision((v) => v + 1)}>
+          <ActionButton type="button" disabled={disabled} onClick={() => setRevision((v) => v + 1)}>
             重试人员目录
-          </button>
+          </ActionButton>
         </div>
       ) : (
         <>
@@ -150,23 +151,23 @@ export function DirectoryPersonPicker({
             </span>
           )}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
+            <ActionButton
               type="button"
               disabled={disabled || page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
               上一页人员
-            </button>
+            </ActionButton>
             <span>
               第 {page} 页 · {data?.total ?? 0} 人
             </span>
-            <button
+            <ActionButton
               type="button"
               disabled={disabled || page * 20 >= (data?.total ?? 0)}
               onClick={() => setPage((p) => p + 1)}
             >
               下一页人员
-            </button>
+            </ActionButton>
           </div>
         </>
       )}

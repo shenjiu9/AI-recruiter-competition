@@ -71,7 +71,7 @@ test('组织配置联调：授权、试算、历史恢复与在途审批快照',
   await page.getByRole('tab', { name: '组织与审批配置' }).click();
   const dept = page.locator(`tr[data-row-key="${DEPT}"]`);
   await dept.getByRole('button', { name: '配置审批人' }).click();
-  await dialog.getByLabel('HRBP', { exact: true }).press('ArrowDown');
+  await dialog.getByLabel('HRBP', { exact: true }).fill('payroll');
   await page
     .locator('.ant-select-item-option-content')
     .getByText('薪酬维护负责人 (payroll)', { exact: true })
