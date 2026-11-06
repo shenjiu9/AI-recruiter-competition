@@ -24,9 +24,13 @@ with TemporaryDirectory(prefix="recruiter-e2e-") as directory:
         DEV_LOGIN_PASSWORD="e2e-only-password",
         ENVIRONMENT="development",
         CANDIDATE_PORTAL_URL="http://127.0.0.1:5185",
+        AI_WORKER_ENABLED="true",
     )
     command.upgrade(Config("alembic.ini"), "head")
     container = build_container(Settings())
+    from e2e_ai_fixture import BrowserAiGateway
+
+    container.ai_gateway = BrowserAiGateway()
     seed(container)
     # Browser fixtures live only in this disposable database, never in demo/production seed.
     with container.db.sessions.begin() as db:

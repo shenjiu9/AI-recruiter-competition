@@ -98,7 +98,13 @@ def workbench(request: Request):
     ctx = context(request)
     with request.app.state.container.scope() as s:
         s.decision.sync()
-        return s.query.workbench(ctx)
+        result = s.query.workbench(ctx)
+        state = s.engine.health(ctx)
+        result["ai_enabled"] = request.app.state.container.settings.ai_worker_enabled and any(
+            state["components"][k] and state["enabled"][k] for k in state["components"]
+        )
+        result["ai_activity"] = s.engine.listing(ctx)[:20]
+        return result
 
 
 @router.get("/hr/automation-live")
@@ -110,7 +116,9 @@ def automation(
 ):
     ctx = context(request)
     with request.app.state.container.scope() as s:
-        return s.automation.get(ctx, scope, target, dept)
+        result = s.automation.get(ctx, scope, target, dept)
+        result["engine_enabled"] = request.app.state.container.settings.ai_worker_enabled
+        return result
 
 
 @router.post("/hr/automation-live")
@@ -119,4 +127,6 @@ def configure(request: Request, body: AutomationCommand):
     with request.app.state.container.scope() as s:
         s.automation.key(ctx, body.scope, body.target, body.dept)
         write(request, ctx, s, body.model_dump(), lambda: s.automation.configure(ctx, body))
-        return s.automation.get(ctx, body.scope, body.target, body.dept)
+        result = s.automation.get(ctx, body.scope, body.target, body.dept)
+        result["engine_enabled"] = request.app.state.container.settings.ai_worker_enabled
+        return result

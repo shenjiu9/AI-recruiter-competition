@@ -1,6 +1,9 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
 
+from app.engine.gateway import DifyGateway
+from app.engine.repository import Jobs
+from app.engine.service import Engine
 from app.kernel.types import SystemClock
 from app.modules.application.adapters.repository import SqlApplications
 from app.modules.application.public import ApplicationFacade
@@ -44,6 +47,7 @@ class Container:
         self.db = Database(settings.database_url)
         self.crypto = Crypto(settings.encryption_key)
         self.interview_gateway = None
+        self.ai_gateway = DifyGateway(settings)
 
     @contextmanager
     def scope(self):
@@ -144,7 +148,7 @@ class Container:
             hiring.decisions = decision
             application.hiring = hiring
             query = QueryFacade(position, application, hiring, decision, candidate)
-            yield SimpleNamespace(
+            services = SimpleNamespace(
                 hiring=hiring,
                 decision=decision,
                 automation=automation,
@@ -160,6 +164,15 @@ class Container:
                 requisition=requisition,
                 idempotency=Idempotency(session, self.clock, self.crypto),
             )
+            services.engine = Engine(
+                services,
+                Jobs(session, self.crypto),
+                self.ai_gateway,
+                self.clock,
+                SqlJournal(session, self.clock),
+            )
+            candidate.ai_jobs = services.engine
+            yield services
 
 
 def build_container(settings, clock=None):

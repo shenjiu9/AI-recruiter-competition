@@ -13,6 +13,7 @@ class CandidateFacade:
         self.applications = None  # Public port wired by the composition root.
         self.conversations = None
         self.interviews = None
+        self.ai_jobs = None
 
     def lock(self, ctx):
         self.org.lock_configuration()
@@ -399,6 +400,8 @@ class CandidateFacade:
             if not command.reason:
                 raise DomainError("REASON_REQUIRED", "请记录候选人删除请求的依据")
             ids = self.family(c["id"])
+            if self.ai_jobs:
+                self.ai_jobs.erase(ids)
             self.conversations.invalidate(ctx, ids, erase=True)
             self.applications.erase(ids)
             self.store.erase(ids)
@@ -476,3 +479,11 @@ class CandidateFacade:
             for k, v in self.safe_profile(c["profile"]).items()
             if k not in {"phone", "email", "name", "expected_salary"}
         }
+
+    def ai_sources(self, cid):
+        profile = self.evaluation_input(cid)
+        sources = {"F:" + k: str(v) for k, v in profile.items() if v not in {None, ""}}
+        for resume in self.store.resumes(self.family(cid)):
+            for paragraph in resume.get("paragraphs", []):
+                sources[resume["id"] + ":" + paragraph["id"]] = paragraph["text"]
+        return sources

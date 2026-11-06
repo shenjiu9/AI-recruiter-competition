@@ -6,6 +6,7 @@ dist/
 .DS_Store
 coverage/
 .env
+.env.dify-local
 .venv/
 __pycache__/
 *.pyc
@@ -14,5 +15,6 @@ __pycache__/
 *.db
 *.db-journal
 test-results/
+backups/
 playwright-report/
 .import_linter_cache/

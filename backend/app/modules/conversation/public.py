@@ -75,6 +75,7 @@ class ConversationFacade:
             "version": c["version"],
             "candidate_version": candidate["version"],
             "mode": c["mode"],
+            "ai_paused": c.get("ai_paused", False),
             "owner_id": c["owner_id"] if ctx else None,
             "messages": messages,
             "consent": candidate["consent"],
@@ -192,6 +193,7 @@ class ConversationFacade:
                 self.applications.authorize(ctx, app["id"])
             self.candidates.resolve_request(ctx, cid, command.request_id, command.content)
         elif action in {"take_over", "hand_back"}:
+            c["ai_paused"] = action == "take_over"
             if action == "take_over":
                 self.writable(ctx, cid, [])
             if c["owner_id"] and c["owner_id"] != ctx.principal.user_id:
@@ -213,6 +215,7 @@ class ConversationFacade:
                 debounce_at=None,
             )
         elif action == "ask_human":
+            c["ai_paused"] = True
             if c["mode"] != "hr":
                 c.update(mode="waiting_human", debounce_at=None)
         elif action == "send":
@@ -265,6 +268,7 @@ class ConversationFacade:
                     )
                     c = self.merge_privacy(ctx, c)
                 elif any(word in command.content for word in ("转人工", "找人工", "人工客服")):
+                    c["ai_paused"] = True
                     c.update(mode="waiting_human", debounce_at=None)
         else:
             self.candidates.self_service(ctx, cid, action, command.content)
@@ -308,6 +312,85 @@ class ConversationFacade:
             if m["sender"] == "candidate"
         ]
         return max(messages, key=lambda m: (m["created_at"], m["id"])) if messages else None
+
+    def ai_reply(self, ctx, cid, text, reply_to_id, action_id):
+        """Called after engine evidence/policy checks, in the same transaction."""
+        candidate = self.authorize(ctx, cid)
+        self.writable(ctx, cid, [])
+        if candidate["consent"] != "granted" or candidate["do_not_contact"]:
+            raise DomainError("CONSENT_REQUIRED", "候选人授权已变化", 409)
+        c = self.store.get(cid)
+        if c["mode"] == "hr" or c.get("ai_paused"):
+            raise DomainError("HUMAN_TAKEOVER", "HR 正在接管会话", 409)
+        if any(m.get("action_id") == action_id for m in c["messages"]):
+            return None
+        latest = self.latest_inbound(cid)
+        if not latest or latest["id"] != reply_to_id:
+            raise DomainError("REPLY_STALE", "候选人已发来新消息", 409)
+        now = self.clock.now()
+        recent = now - datetime.fromisoformat(latest["created_at"]) <= timedelta(minutes=30)
+        due = self.delivery_time(now, recent)
+        sent = [m for m in c["messages"] if m["sender"] == "ai" and m["status"] == "sent"]
+        today = [
+            m
+            for m in sent
+            if datetime.fromisoformat(m["created_at"]).astimezone(SHANGHAI).date()
+            == now.astimezone(SHANGHAI).date()
+        ]
+        if len(today) >= 20 or any(
+            now - datetime.fromisoformat(m["created_at"]) < timedelta(seconds=10) for m in sent
+        ):
+            raise DomainError("AI_FREQUENCY_LIMIT", "AI 回复已达到频率限制，请由 HR 核对", 409)
+        if due > now:
+            return due.isoformat()
+        c["messages"].append(
+            {
+                "id": new_id("MSG"),
+                "content": text,
+                "sender": "ai",
+                "author_id": ctx.principal.user_id,
+                "channel": "h5",
+                "application_ids": [],
+                "created_at": now.isoformat(),
+                "due_at": now.isoformat(),
+                "status": "sent",
+                "reply_to_id": reply_to_id,
+                "notice_id": None,
+                "action_id": action_id,
+            }
+        )
+        c["debounce_at"] = None
+        self.touch(ctx, c, "ai_replied")
+        return None
+
+    def ai_requests(self):
+        result = []
+        now = self.clock.now()
+        for c in self.store.all():
+            if c["mode"] == "hr" or c.get("ai_paused") or not self.candidates.contactable(c["id"]):
+                continue
+            latest = self.latest_inbound(c["id"])
+            if not latest or now - datetime.fromisoformat(latest["created_at"]) < timedelta(
+                seconds=10
+            ):
+                continue
+            if any(
+                m["sender"] != "candidate"
+                and m["status"] == "sent"
+                and m["created_at"] >= latest["created_at"]
+                for m in c["messages"]
+            ):
+                continue
+            apps = [a for a in self.apps(c["id"]) if not a["outcome"]]
+            if apps:
+                result.append(
+                    {
+                        "candidate_id": c["id"],
+                        "message_id": latest["id"],
+                        "position_id": apps[0]["position_id"],
+                    }
+                )
+        return result
 
     @staticmethod
     def delivery_time(now, recent=False):

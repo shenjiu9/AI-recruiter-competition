@@ -15,6 +15,16 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  aiHealth: () => ({ method: 'GET', path: '/hr/ai-health' }),
+  aiJobs: (page) => ({ method: 'GET', path: `/hr/ai-jobs?page=${page}` }),
+  aiJob: (id) => ({ method: 'GET', path: `/hr/ai-jobs/${enc(id)}` }),
+  startAiJob: (body, opts) => ({ method: 'POST', path: '/hr/ai-jobs', body, opts }),
+  aiJobCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/ai-jobs/${enc(id)}/actions`,
+    body,
+    opts,
+  }),
   downloadHireHandoff: (id) => ({
     method: 'GET',
     path: `/hr/hiring/${enc(id)}/handoff.xlsx`,

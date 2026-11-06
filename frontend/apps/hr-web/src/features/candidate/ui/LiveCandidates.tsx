@@ -634,6 +634,12 @@ function CandidateDetailContent({ id }: { id: string }) {
                 挂到其他岗位
               </Button>
               <Button onClick={() => setUpload(true)}>上传简历版本</Button>
+              <Link to={`/ai-jobs?component=A3&object=${encodeURIComponent(c.id)}`}>
+                AI 提取复核
+              </Link>
+              <Link to={`/ai-jobs?component=A4&object=${encodeURIComponent(c.id)}`}>
+                生成回复草稿
+              </Link>
             </>
           )
         }

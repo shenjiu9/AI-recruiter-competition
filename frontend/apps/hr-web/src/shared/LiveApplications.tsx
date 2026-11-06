@@ -401,6 +401,11 @@ export function LiveApplicationTable({ rows }: { rows: LiveApplication[] }) {
             render: (_, a: LiveApplication) =>
               a.can_edit && (
                 <Space wrap>
+                  {a.stage === 'ai_eval' && !a.outcome && (
+                    <Link to={`/ai-jobs?component=A5&object=${encodeURIComponent(a.id)}`}>
+                      发起证据评估
+                    </Link>
+                  )}
                   {(a.outcome
                     ? a.outcome === 'rejected'
                       ? ['undo_reject']

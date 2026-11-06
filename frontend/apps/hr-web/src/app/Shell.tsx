@@ -50,6 +50,7 @@ export function Shell() {
     { key: '/candidates', icon: <TeamOutlined />, label: '候选人' },
     { key: '/interviews', icon: <CalendarOutlined />, label: '面试' },
     { key: '/hiring', icon: <SolutionOutlined />, label: '录用与移交' },
+    { key: '/ai-jobs', icon: <SolutionOutlined />, label: 'AI 任务与复核' },
     { key: '/channels', icon: <ShareAltOutlined />, label: '渠道' },
     { key: '/insights', icon: <FundOutlined />, label: '数据洞察' },
   ];

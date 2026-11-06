@@ -38,6 +38,7 @@ jobs:
       - run: ruff check app tests migrations scripts
       - run: ruff format --check app tests migrations scripts
       - run: lint-imports
+      - run: python scripts/export_openapi.py --check
       - run: alembic upgrade head
       - run: pytest -q
       - run: alembic downgrade base && alembic upgrade head && alembic check

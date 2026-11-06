@@ -563,7 +563,9 @@ export function LiveWorkbench() {
   return (
     <main style={{ maxWidth: 1200, margin: 'auto', padding: 16 }}>
       <h1>招聘工作台</h1>
-      <p>以下为当前权限内的真实数据。AI 执行尚未接入。</p>
+      <p>
+        以下为当前权限内的真实数据。<a href="/ai-jobs">查看 AI 任务与复核</a>
+      </p>
       <a href="/hiring">录用决定、移交与结果回填</a>
       {q.error && <p role="alert">{q.error}</p>}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>

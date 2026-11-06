@@ -234,6 +234,18 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  aiHealth(): Promise<AiHealth>;
+  aiJobs(page: number): Promise<{ items: AiJob[]; total: number }>;
+  aiJob(id: string): Promise<AiJob>;
+  startAiJob(
+    body: { component: string; object_id: string; prompt: string },
+    opts: WriteOpts,
+  ): Promise<AiJob>;
+  aiJobCommand(
+    id: string,
+    body: { action: string; expected_version: number; reason: string; verified: boolean },
+    opts: WriteOpts,
+  ): Promise<AiJob>;
   liveHires(
     page: number,
     filters?: Record<string, string>,
@@ -514,6 +526,29 @@ export interface ApiClient {
   portalAskHuman(token: string, opts: WriteOpts): Promise<Message>;
   portalSlots(token: string): Promise<Slot[]>;
   portalPickSlot(token: string, slotId: string, opts: WriteOpts): Promise<Message>;
+}
+
+export interface AiHealth {
+  components: Record<string, boolean>;
+  enabled: Record<string, boolean>;
+  mode: string;
+  worker_enabled: boolean;
+}
+export interface AiJob {
+  id: string;
+  version: number;
+  component: string;
+  object_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  attempts: number;
+  error_code: string;
+  actor_id: string;
+  inputs?: Record<string, unknown>;
+  output?: Record<string, unknown> | null;
+  runs?: { run_id: string; tokens: number; elapsed_ms: number }[];
+  history?: { status: string; at: string; code: string }[];
 }
 
 export interface ApiConfig {

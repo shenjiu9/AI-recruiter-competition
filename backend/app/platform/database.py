@@ -14,6 +14,7 @@ SCHEMAS = (
     "hire",
     "decision",
     "automation",
+    "engine",
 )
 
 

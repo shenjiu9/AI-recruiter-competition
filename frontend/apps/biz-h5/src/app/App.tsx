@@ -10,6 +10,7 @@ import { FeedbackPage } from '../pages/FeedbackPage';
 import { PositionsPage, PositionReviewPage } from '../pages/PositionsPage';
 import { InterviewsPage, InterviewPage } from '../pages/InterviewsPage';
 import { HiringPage, WorkbenchPage } from '../pages/HiringPage';
+import { AiJobs } from '@recruiter/ui-kit/ai-jobs';
 
 const apiConfig: ApiConfig = {
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
   { path: '/hiring', element: <HiringPage /> },
   { path: '/hiring/:id', element: <HiringPage /> },
   { path: '/workbench', element: <WorkbenchPage /> },
+  { path: '/ai-jobs', element: <AiJobs business /> },
   { path: '/interviews/:id', element: <InterviewPage /> },
   { path: '/positions/:id', element: <PositionReviewPage /> },
 ]);

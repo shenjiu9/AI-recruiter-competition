@@ -100,6 +100,11 @@ export function InterviewDetails({
         {iv.candidate_name} · 第 {iv.round_no} 轮 {iv.round_name}
       </h2>
       <p>
+        <a href={`/ai-jobs?component=A6&object=${encodeURIComponent(iv.id)}`}>
+          用 AI 整理已授权面试记录
+        </a>
+      </p>
+      <p>
         {iv.position_name} · {FORMAT[iv.format] ?? '待配置'} · {INTERVIEW_STATUS[iv.status]}
         {iv.result ? ` · ${INTERVIEW_RESULT[iv.result]}` : ''}
       </p>

@@ -11,11 +11,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException
 
+from app.interfaces.api.ai import router as ai_router
 from app.interfaces.api.auth import router as auth_router
 from app.interfaces.api.candidate import router as candidate_router
 from app.interfaces.api.conversation import router as conversation_router
 from app.interfaces.api.hiring import router as hiring_router
 from app.interfaces.api.interview import router as interview_router
+from app.interfaces.api.operations import router as operations_router
 from app.interfaces.api.org import router as org_router
 from app.interfaces.api.organization import router as organization_router
 from app.interfaces.api.position import router as pos_router
@@ -55,12 +57,35 @@ def create_api(container):
             )
             else None
         )
+
+        async def ai_work(queue):
+            from app.ai_worker import run_once as ai_tick
+
+            while not stop.is_set():
+                try:
+                    await asyncio.to_thread(ai_tick, container, queue)
+                except Exception as exc:
+                    logging.getLogger("recruiter").warning(
+                        "ai_worker_unavailable type=%s", type(exc).__name__
+                    )
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=2)
+                except TimeoutError:
+                    pass
+
+        ai_tasks = (
+            [asyncio.create_task(ai_work(q)) for q in ("realtime", "batch")]
+            if container.settings.ai_worker_enabled
+            else []
+        )
         try:
             yield
         finally:
             stop.set()
             if task:
                 await task
+            if ai_tasks:
+                await asyncio.gather(*ai_tasks)
 
     app = FastAPI(title="AI 招聘系统比赛版", version="0.1.0", lifespan=lifespan)
     app.state.container = container
@@ -148,4 +173,6 @@ def create_api(container):
     app.include_router(conversation_router)
     app.include_router(interview_router)
     app.include_router(hiring_router)
+    app.include_router(ai_router)
+    app.include_router(operations_router)
     return app

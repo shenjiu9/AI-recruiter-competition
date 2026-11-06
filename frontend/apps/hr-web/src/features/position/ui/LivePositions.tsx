@@ -373,6 +373,21 @@ export function LivePositionDetail() {
       <h1>
         {pos.name} <small>{POSITION_STATUS_LABEL[pos.status]}</small>
       </h1>
+      {pos.canEdit && (
+        <p>
+          <Link to={`/ai-jobs?component=A1&object=${encodeURIComponent(pos.id)}`}>
+            生成画像草稿
+          </Link>{' '}
+          ·{' '}
+          <Link to={`/ai-jobs?component=A2&object=${encodeURIComponent(pos.id)}`}>
+            人才搜索建议
+          </Link>{' '}
+          ·{' '}
+          <Link to={`/ai-jobs?component=A7&object=${encodeURIComponent(pos.id)}`}>
+            岗位数据洞察
+          </Link>
+        </p>
+      )}
       <Space wrap style={{ marginBottom: 16 }}>
         {actions.map((a) => (
           <Button

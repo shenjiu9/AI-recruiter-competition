@@ -23,7 +23,11 @@ export function LiveAutomation() {
       <p>
         配置按全局 → 部门序列 → 岗位覆盖。淘汰最高 L2，录用建议固定 L1；录用决定和审批始终由人完成。
       </p>
-      <p>AI 执行层尚未接入。启用组件或选择自动模式只保存配置，当前不会发消息或推进候选人。</p>
+      <p>
+        配置 Dify
+        工作流并启动后台任务后，正常模式按策略执行；影子模式只记录结果。当前支持沟通回复和证据评估的
+        L3 执行，其他组件提供待复核建议。<a href="/ai-jobs">查看连接状态与任务</a>
+      </p>
       <label>
         配置范围{' '}
         <select aria-label="配置范围" value={scope} onChange={(e) => setScope(e.target.value)}>
