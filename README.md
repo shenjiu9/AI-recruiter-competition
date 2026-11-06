@@ -8,7 +8,17 @@ AI 招聘官系统的需求、MVP 规划与详细实现设计。三份文档从�
 | [02 · MVP 实现规划](docs/02-mvp-plan.md) | MVP 范围与取舍、总体架构、技术栈、工程结构、数据模型、核心引擎、AI 组件、外部集成、页面、迭代计划与风险 | 产品负责人、技术负责人 |
 | [03 · 详细实现文档](docs/03-implementation-design.md) | 分层与模块地图、模块内部结构规范、全部公开函数清单（后端与前端）、接口与事件契约、高可用与可扩展设计、开发规范、部署运维 | 全体研发 |
 
-## 代码
+## 参与协作
+
+本仓库公开，欢迎所有人提交问题、改进文档或贡献代码，无需加入成员名单。
+
+- [Issues：反馈缺陷或提出需求](https://github.com/shenjiu9/AI-recruiter-competition/issues)
+- [Discussions：交流方案与使用经验](https://github.com/shenjiu9/AI-recruiter-competition/discussions)
+- **Fork → 创建分支 → 修改并测试 → 提交 PR → 维护者审核合并**
+
+详细步骤见 [贡献指南](CONTRIBUTING.md)。公开协作不授予云服务器访问权限；开发和测试请使用自己的环境。
+
+## 代码与运行
 
 | 目录 | 内容 |
 | --- | --- |
