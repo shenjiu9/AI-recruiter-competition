@@ -225,6 +225,10 @@ function JsonView({ value }: { value: unknown }) {
     coverage: '证据覆盖率',
     sample_conclusions: '多次评估结论',
     pending: '待确认事项',
+    cited: '引用数据',
+    dropped: '已剔除（证据不符）',
+    field: '字段',
+    reason: '原因',
   };
   return (
     <dl>
