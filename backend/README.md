@@ -25,7 +25,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\uvicorn.exe app.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-`setup_local.py` 生成 `.env` 中的随机会话密钥、加密密钥和开发登录口令，已有文件时不会覆盖。默认连接本机 PostgreSQL。没有可用 PostgreSQL 时，可在首次生成环境时加 `--sqlite`；这不能替代 PostgreSQL 并发与部署验收。本次机器因 WSL 需要重启，已用 `--sqlite` 生成本地环境。
+`setup_local.py` 生成 `.env` 中的随机会话密钥、加密密钥和开发登录口令，已有文件时不会覆盖。默认连接本机 PostgreSQL。没有可用 PostgreSQL 时，可在首次生成环境时加 `--sqlite`；这不能替代 PostgreSQL 并发与部署验收。本机已有 `.env` 保留早期 SQLite 开发配置；Docker Compose 使用独立的 PostgreSQL 数据卷，两者数据不会自动合并。
 
 另开终端，在仓库根目录启动前端：
 
@@ -43,15 +43,22 @@ HR：[http://localhost:5173](http://localhost:5173)，业务端：[http://localh
 
 ## Docker
 
-本机已安装 Docker Desktop、Docker CLI、Compose 和 WSL；启用 VirtualMachinePlatform/WSL 返回 `RestartNeeded=True`。需要用户重启 Windows，再启动 Docker Desktop。本批未自动重启机器。
+本机 Docker Desktop、Docker CLI、Compose 和 WSL 已安装，Linux 引擎已启动并完成项目容器验收。2026-11-05 复查确认虚拟化平台和 WSL 已启用，启动 Docker Desktop 后即可正常运行，无需再次重启 Windows。数据库、Redis、API 和三个前端均已启动，迁移和演示目录初始化成功。
 
-重启后，在仓库根目录：
+日常启动，在仓库根目录执行：
 
 ```powershell
+docker desktop start --timeout 60
 docker version
 docker compose --env-file backend/.env -f deploy/compose.yaml --profile demo --profile web up -d --build
 docker compose --env-file backend/.env -f deploy/compose.yaml ps
 ```
+
+访问 HR `http://localhost:5173`、业务 H5 `http://localhost:5174`、候选人 H5 `http://localhost:5175` 和 API `http://localhost:8000/docs`。候选人需通过 HR 生成的专属链接进入，直接访问首页会显示链接缺失提示。开发登录口令沿用本地 `.env`，不写入文档。
+
+PostgreSQL 使用 `ai-recruiter_postgres-data` 命名卷。已验证容器重启后迁移版本 `0012`、11 名目录人员及 4 个部门保持不变，API 恢复正常；HR／业务端真实登录和深层路由已通过浏览器检查。容器库初始化为演示组织，原 SQLite 数据库仍原样保留，没有执行数据迁移或覆盖。
+
+本机容器 PostgreSQL 的独立临时测试库已跑通全部 311 项后端测试，无跳过，并通过迁移回退／升级及 schema 一致性检查；测试库已清理。此验收不替代 B10 的生产负载、备份恢复及上线检查。
 
 Compose 包含 PostgreSQL、Redis、一次性迁移、显式演示组织种子、API、HR／业务／候选人前端；服务端口只绑定到 `127.0.0.1`。容器强制使用 PostgreSQL，忽略本地 `.env` 中可能配置的 SQLite URL。数据保存于命名卷。Redis 当前仅预留给后续限流/缓存模块。
 
