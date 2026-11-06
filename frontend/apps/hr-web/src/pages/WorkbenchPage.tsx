@@ -41,7 +41,7 @@ function MockWorkbenchPage() {
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        <div className="hr-brief-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           {summary.data ? (
             <BriefLine
               s={summary.data}

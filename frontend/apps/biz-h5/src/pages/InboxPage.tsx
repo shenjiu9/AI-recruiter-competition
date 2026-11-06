@@ -18,7 +18,7 @@ export function InboxPage() {
         <p>把时间留给重要的判断，其他交给协作。</p>
       </header>
       {import.meta.env.VITE_USE_MOCK === 'false' && (
-        <div className="rm-inbox-shortcuts">
+        <nav className="rm-inbox-shortcuts" aria-label="更多入口">
           <Link className="rm-shortcut" to="/positions">
             <span aria-hidden="true">01</span>岗位画像与关闭确认<small>对齐团队的人才需求</small>
           </Link>
@@ -31,7 +31,7 @@ export function InboxPage() {
           <Link className="rm-shortcut" to="/hiring">
             <span aria-hidden="true">04</span>录用决定与审批<small>迎接新的团队伙伴</small>
           </Link>
-        </div>
+        </nav>
       )}
       <RequisitionNotices onOpen={setNoticeId} />
       <Popup

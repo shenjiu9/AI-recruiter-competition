@@ -11,7 +11,7 @@ export function PageHeader({
 }) {
   return (
     <header
-      className="rc-page-header"
+      className="rc-page-header hr-page-header"
       style={{
         display: 'flex',
         alignItems: 'flex-end',
@@ -22,9 +22,9 @@ export function PageHeader({
     >
       <div style={{ minWidth: 0 }}>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 650, lineHeight: 1.35 }}>{title}</h1>
-        {sub && <div style={{ marginTop: 4, color: 'var(--rc-ink-2)' }}>{sub}</div>}
+        {sub && <div className="sub">{sub}</div>}
       </div>
-      {extra && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>{extra}</div>}
+      {extra && <div className="extra">{extra}</div>}
     </header>
   );
 }

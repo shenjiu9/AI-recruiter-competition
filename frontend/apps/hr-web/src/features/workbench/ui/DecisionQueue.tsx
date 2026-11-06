@@ -53,8 +53,8 @@ export function DecisionQueue({ cards }: { cards: Card[] }) {
     return <EmptyState title="没有需要你决定的事" why="AI 正在处理岗位上的沟通和评估，有需要你判断的事项会出现在这里。" action={<Link to="/positions">看看岗位进展</Link>} />;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
-      <nav aria-label="待决策队列" className="panel" style={{ overflow: 'hidden' }}>
+    <div className="rc-queue">
+      <nav aria-label="待决策队列" className="panel">
         {list.map((c) => (
           <QueueRow key={c.id} card={c} current={c.id === current?.id} onSelect={() => setCurrentId(c.id)} />
         ))}

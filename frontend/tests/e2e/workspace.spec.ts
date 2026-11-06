@@ -3,6 +3,49 @@ import { headers, login, ready } from './position-helpers';
 
 test.use({ actionTimeout: 15_000 });
 
+for (const [port, actor, width] of [
+  [5183, 'hr', 1440],
+  [5184, 'manager', 760],
+] as const) {
+  test(`branded login remains styled and usable on app ${port}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await expect(page.locator('.rc-auth-story')).toContainText('遇见对的人');
+    await expect(page.locator('.rc-auth-story')).toHaveCSS('background-color', 'rgb(20, 44, 50)');
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCSS(
+      'background-color',
+      'rgb(22, 119, 107)',
+    );
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+      .toBeTruthy();
+    await page.screenshot({ path: info.outputPath('branded-login.png'), fullPage: true });
+    await login(page, actor, `http://127.0.0.1:${port}/`);
+  });
+}
+
+test('HR narrow-screen drawer retains navigation and closes after changing pages', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, 'hr', '/workbench');
+  await page.getByRole('button', { name: '打开导航' }).click();
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('menuitem', { name: '候选人' }).click();
+  await expect(page).toHaveURL(/\/candidates$/);
+  await expect(drawer).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '打开导航' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+    .toBeTruthy();
+});
+
 test('workspace shows real totals, searches candidates and opens the notification panel', async ({
   page,
   request,

@@ -1,4 +1,4 @@
-:root {
+:root:root {
   --adm-color-primary: #16776b;
   --adm-color-text: #20343b;
   --adm-color-text-secondary: #52656b;
@@ -350,7 +350,7 @@ h1 {
   margin-bottom: 24px;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:root {
     --adm-color-primary: #6fc3ae;
     --adm-color-text: #e6eaf0;
     --adm-color-text-secondary: #b8c0cc;

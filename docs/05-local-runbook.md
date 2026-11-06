@@ -14,6 +14,8 @@
 
 脚本保留数据库与配置，等待 API 和 Dify 就绪后输出入口。招聘系统常驻容器使用 `unless-stopped` 重启策略；Docker Desktop 本身仍须处于运行状态。
 
+启动和重建使用当前检出的分支，不会自动切换到 `main`。更新前先运行 `git status --short --branch` 和 `git log -1 --oneline`，确认所需改动已经包含在当前版本；“最新主分支”不包含尚未合并的 PR。2026-11-06 的登录界面回退来自切到未包含 PR #2 的主分支，现已在 `feat/frontend-redesign` 整合 `main` 的 PR #3 更新。该整合 PR 合并前，查看新版界面应从此分支构建。
+
 ```powershell
 docker desktop start --timeout 60
 docker compose --env-file backend/.env -f deploy/compose.yaml --profile demo --profile web up -d --build

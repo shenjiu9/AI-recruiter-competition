@@ -67,6 +67,18 @@
 .app-sidebar .ant-menu-item .anticon {
   font-size: 18px;
 }
+.app-sidebar .hr-nav-later {
+  color: #bdd2d1;
+  border-color: #557079;
+}
+.app-nav-drawer .ant-drawer-header {
+  background: #142c32;
+  border-color: #365057;
+}
+.app-nav-drawer .ant-drawer-title,
+.app-nav-drawer .ant-drawer-close {
+  color: #f1fbf8;
+}
 .app-sidebar .ant-menu-item-selected {
   background: #d7f3e9 !important;
   color: #173e38 !important;
@@ -140,6 +152,7 @@
 .app-content {
   padding: 28px 32px 48px;
   min-width: 0;
+  outline: none;
 }
 .app-content > main {
   max-width: none !important;
@@ -180,6 +193,13 @@
   }
 }
 @media (max-width: 1000px) {
+  .app-content .ant-table-content {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .app-content .ant-table-content > table {
+    min-width: 760px;
+  }
   .app-topbar {
     padding: 0 20px;
   }

@@ -1,5 +1,7 @@
-/* antd-mobile 主题变量：与 HR Web 同一套 token */
-:root {
+/* antd-mobile 主题变量：与 HR Web 同一套 token。
+   用 :root:root 提高优先级——antd-mobile 自己的 :root 默认值后加载，同级选择器会把品牌色盖回默认蓝。 */
+:root:root {
+  color-scheme: light;
   --adm-color-primary: #24427A;
   --adm-color-success: #2E7D4F;
   --adm-color-warning: #A86200;
@@ -11,18 +13,27 @@
   --adm-color-border: #DDE1E8;
   --adm-font-family: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --adm-radius-m: 8px;
-  --rm-paper: #F5F6F8; --rm-surface-2: #EEF0F4; --rm-ai: #1D6F7A; --rm-ai-soft: #E3F1F2; --rm-brand-soft: #E7ECF5;
+  --rm-paper: #F5F6F8; --rm-ok-soft: #E5F2EA; --rm-surface-2: #EEF0F4; --rm-ai: #1D6F7A; --rm-ai-soft: #E3F1F2; --rm-brand-soft: #E7ECF5;
   --rm-evidence: rgba(245, 215, 110, 0.55); --rm-evidence-edge: #C9A227; --rm-ink-3: #6B7585;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:root {
+    color-scheme: dark;
     --adm-color-primary: #8FA8D9; --adm-color-text: #E6EAF0; --adm-color-text-secondary: #B8C0CC; --adm-color-weak: #8E98A6;
     --adm-color-background: #1B2129; --adm-color-border: #2C3440;
-    --rm-paper: #13171D; --rm-surface-2: #232A34; --rm-ai: #6FC3CC; --rm-ai-soft: #17323A; --rm-brand-soft: #1F2C44;
+    --rm-paper: #13171D; --rm-ok-soft: #173024; --rm-surface-2: #232A34; --rm-ai: #6FC3CC; --rm-ai-soft: #17323A; --rm-brand-soft: #1F2C44;
     --rm-evidence: rgba(214, 181, 72, 0.32); --rm-evidence-edge: #D6B548; --rm-ink-3: #8E98A6;
   }
 }
-html, body { margin: 0; background: var(--rm-paper); color: var(--adm-color-text); font-family: var(--adm-font-family); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--rm-paper); color: var(--adm-color-text); font-family: var(--adm-font-family); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+body { padding-bottom: env(safe-area-inset-bottom); }
+button, a, summary { touch-action: manipulation; }
+h1, h2, h3 { text-wrap: balance; }
+.adm-button { --border-radius: 8px; font-weight: 500; }
+.adm-button:not(.adm-button-disabled):active { transform: scale(0.98); }
+@media (prefers-reduced-motion: no-preference) { .adm-button { transition: transform 120ms cubic-bezier(0.2, 0, 0, 1); } }
+.adm-nav-bar { background: var(--adm-color-background); border-bottom: 1px solid var(--adm-color-border); }
+.adm-nav-bar-title { font-weight: 500; }
 :focus-visible { outline: 2px solid var(--adm-color-primary); outline-offset: 2px; }
 .rm-chat { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
 .rm-msg { max-width: 82%; }
@@ -36,8 +47,28 @@ html, body { margin: 0; background: var(--rm-paper); color: var(--adm-color-text
 .rm-slots { display: grid; gap: 8px; margin-top: 8px; }
 .rm-slot { min-height: 48px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--adm-color-border); background: var(--adm-color-background); color: var(--adm-color-text); font: inherit; font-size: 15px; text-align: left; }
 .rm-slot[aria-pressed='true'] { border-color: var(--adm-color-primary); box-shadow: inset 0 0 0 1px var(--adm-color-primary); }
-.rm-card { margin: 12px 16px; padding: 16px; border-radius: 12px; background: var(--adm-color-background); }
+.rm-card { margin: 12px 16px; padding: 16px; border-radius: 12px; background: var(--adm-color-background); border: 1px solid var(--adm-color-border); }
+.rm-card-meta { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 12px; color: var(--rm-ink-3); }
+.rm-card-meta [data-urgent='true'] { color: var(--adm-color-warning); font-weight: 500; }
+.rm-actions { display: grid; gap: 8px; margin-top: 16px; }
+.rm-actions-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rm-done { display: flex; gap: 6px; align-items: center; margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: var(--rm-ok-soft); color: var(--adm-color-success); font-size: 14px; }
+/* 共享的审批与交接消息（ui-kit RequisitionNotices）在移动端的样式 */
+.rc-notices { margin: 12px 16px 0; border-radius: 12px; background: var(--adm-color-background); border: 1px solid var(--adm-color-border); }
+.rc-notices > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; color: var(--adm-color-text-secondary); font-size: 14px; list-style: none; cursor: pointer; }
+.rc-notices > summary::-webkit-details-marker { display: none; }
+.rc-notices > summary::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.rc-notices[open] > summary::after { transform: rotate(-135deg); }
+.rc-notices .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--adm-color-primary); }
+.rc-notices .body { padding: 0 16px 12px; font-size: 13px; color: var(--rm-ink-3); }
+.rc-notices ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.rc-notices li { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--adm-color-border); }
+.rc-notices li button { min-height: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: 15px; color: var(--adm-color-primary); text-align: left; }
+.rc-notices time { font-size: 12px; }
 .rm-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; line-height: 1.35; }
 .rm-sub { color: var(--adm-color-text-secondary); font-size: 14px; }
 .rm-quote { margin-top: 6px; padding: 8px 12px; border-radius: 4px; background: var(--rm-paper); box-shadow: inset 3px 0 0 var(--rm-evidence-edge); font-size: 14px; color: var(--adm-color-text-secondary); }
 .rm-ref { display: inline-block; padding: 0 5px; border-radius: 4px; background: var(--rm-evidence); color: var(--adm-color-text); font-size: 12px; font-weight: 500; margin-right: 6px; }
+.rm-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 16px 0; }
+.rm-quick a { display: flex; align-items: center; min-height: 48px; padding: 8px 12px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--adm-color-border); background: var(--adm-color-background); color: var(--adm-color-text); font-size: 14px; line-height: 1.4; text-decoration: none; }
+.rm-quick a:active { background: var(--rm-surface-2); }
