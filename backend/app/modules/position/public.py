@@ -133,6 +133,19 @@ class PositionFacade(PositionContent):
     def get(self, ctx, pos_id):
         return self.dto(ctx, self._get(ctx, pos_id))
 
+    def interview_state(self, pid):
+        pos = self.store.get(pid)
+        if not pos:
+            raise DomainError("NOT_FOUND", "岗位不存在", 404)
+        pause = next(
+            (h.get("handling") for h in reversed(pos["history"]) if h["action"] == "pause"), None
+        )
+        return {
+            "status": pos["status"],
+            "frozen": pos["status"] == "paused" and pause == "freeze",
+            "dept": pos["dept"],
+        }
+
     def application_context(self, ctx, pos_id):
         pos = self._get(ctx, pos_id)
         pause = next(

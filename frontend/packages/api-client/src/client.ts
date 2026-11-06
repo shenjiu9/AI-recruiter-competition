@@ -8,6 +8,8 @@ import type {
   ApplicationCommand,
 } from './candidate-contracts';
 export type * from './candidate-contracts';
+import type { LiveInterview, InterviewCommand, InterviewAvailability } from './interview-contracts';
+export type * from './interview-contracts';
 import type {
   ConversationCommand,
   ConversationResult,
@@ -222,6 +224,24 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  liveInterviews(
+    page: number,
+    filters?: Record<string, string>,
+  ): Promise<{ items: LiveInterview[]; total: number; page: number; size: number }>;
+  liveInterview(id: string): Promise<LiveInterview>;
+  interviewCommand(id: string, body: InterviewCommand, opts: WriteOpts): Promise<LiveInterview>;
+  interviewAvailability(): Promise<InterviewAvailability>;
+  saveInterviewAvailability(
+    body: Omit<InterviewAvailability, 'version'> & { expected_version: number },
+    opts: WriteOpts,
+  ): Promise<InterviewAvailability>;
+  candidateInterviews(token: string): Promise<LiveInterview[]>;
+  candidateInterviewCommand(
+    token: string,
+    id: string,
+    body: InterviewCommand,
+    opts: WriteOpts,
+  ): Promise<LiveInterview>;
   liveConversation(id: string): Promise<LiveConversation>;
   conversationCommand(
     id: string,

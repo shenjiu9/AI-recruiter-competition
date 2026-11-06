@@ -8,6 +8,7 @@ import {
   type ConversationCommand,
 } from '@recruiter/api-client';
 import { useAuthenticatedStream } from '@recruiter/realtime';
+import { CandidateInterviews } from './CandidateInterviews';
 
 export function LivePortal() {
   const [token] = useState(() => new URLSearchParams(location.hash.slice(1)).get('t') ?? '');
@@ -149,6 +150,7 @@ export function LivePortal() {
           <p>暂未关联岗位，您可以先与 HR 沟通。</p>
         )}
       </section>
+      <CandidateInterviews token={token} />
       <section className="rm-card">
         <h2>与招聘 HR 沟通</h2>
         <Button disabled={locked} onClick={() => run('ask_human')}>

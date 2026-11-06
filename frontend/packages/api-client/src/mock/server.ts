@@ -54,6 +54,13 @@ export function createMockClient(): ApiClient {
   };
   return {
     candidatePage: backendOnly,
+    liveInterviews: backendOnly,
+    liveInterview: backendOnly,
+    interviewCommand: backendOnly,
+    interviewAvailability: backendOnly,
+    saveInterviewAvailability: backendOnly,
+    candidateInterviews: backendOnly,
+    candidateInterviewCommand: backendOnly,
     liveConversation: backendOnly,
     conversationCommand: backendOnly,
     livePortal: backendOnly,

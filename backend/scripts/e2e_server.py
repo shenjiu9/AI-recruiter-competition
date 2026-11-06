@@ -51,4 +51,7 @@ with TemporaryDirectory(prefix="recruiter-e2e-") as directory:
                 id="z-left", name="历史离职员工", active=False, roles=[], departments=["客服中心"]
             )
         )
+    from e2e_interview_fixture import seed_finished_interview
+
+    seed_finished_interview(container)
     uvicorn.run(create_api(container), host="127.0.0.1", port=8010, log_level="warning")

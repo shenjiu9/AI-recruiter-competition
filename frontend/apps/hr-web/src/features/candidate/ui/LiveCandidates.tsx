@@ -699,6 +699,11 @@ function CandidateDetailContent({ id }: { id: string }) {
         投递记录 {c.applications.filter((a) => !a.restricted).length} / {c.applications.length}
       </h2>
       <LiveApplicationTable rows={c.applications} />
+      <p>
+        <Link to={`/interviews?candidate_id=${encodeURIComponent(c.id)}`}>
+          查看该候选人的面试安排与面评
+        </Link>
+      </p>
       {c.can_edit && <LiveConversation key={c.id} id={c.id} applications={c.applications} />}
       {c.can_edit && (
         <>

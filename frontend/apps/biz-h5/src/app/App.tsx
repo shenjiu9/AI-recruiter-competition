@@ -8,6 +8,7 @@ import { InboxPage } from '../pages/InboxPage';
 import { BriefPage } from '../pages/BriefPage';
 import { FeedbackPage } from '../pages/FeedbackPage';
 import { PositionsPage, PositionReviewPage } from '../pages/PositionsPage';
+import { InterviewsPage, InterviewPage } from '../pages/InterviewsPage';
 
 const apiConfig: ApiConfig = {
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
@@ -19,6 +20,8 @@ const router = createBrowserRouter([
   { path: '/brief/:appId', element: <BriefPage /> },
   { path: '/feedback/:appId', element: <FeedbackPage /> },
   { path: '/positions', element: <PositionsPage /> },
+  { path: '/interviews', element: <InterviewsPage /> },
+  { path: '/interviews/:id', element: <InterviewPage /> },
   { path: '/positions/:id', element: <PositionReviewPage /> },
 ]);
 

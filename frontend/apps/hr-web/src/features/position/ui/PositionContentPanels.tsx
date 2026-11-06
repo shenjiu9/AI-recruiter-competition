@@ -10,6 +10,7 @@ import {
   type PositionInterviewRound,
 } from '@recruiter/api-client';
 import { DirectoryPersonPicker } from '@recruiter/ui-kit/directory-person-picker';
+import { Link } from 'react-router-dom';
 
 const DISCLOSURE = {
   proactive: '可主动说',
@@ -504,7 +505,11 @@ export function PositionContentPanels({
       {writable && pos.canEdit && (
         <Button onClick={() => onAction('save_interview_plan')}>编辑面试流程</Button>
       )}
-      <p>这里只维护轮次配置；候选人排期和面评在面试模块接入后使用。</p>
+      <p>新进入面试阶段的候选人使用最新流程，已在途的面试保留进入时的版本。</p>
+      <Link to={`/interviews?position_id=${encodeURIComponent(pos.id)}`}>
+        查看本岗位面试日程与面评
+      </Link>
+      <PositionInterviewSchedule id={pos.id} />
       {pos.interviewPlans.at(-1)?.rounds.map((r, i) => (
         <p key={i}>
           第 {i + 1} 轮：{r.name} · {r.duration} 分钟 · {r.criteria}
@@ -524,5 +529,28 @@ export function PositionContentPanels({
         ))}
       </details>
     </>
+  );
+}
+
+function PositionInterviewSchedule({ id }: { id: string }) {
+  const api = useApi();
+  const query = useQuery({
+    queryKey: ['position-interviews', id],
+    queryFn: () => api.liveInterviews(1, { position_id: id }),
+    refetchInterval: 5000,
+  });
+  return (
+    <section aria-label="本岗位面试记录">
+      <p>共 {query.data?.total ?? 0} 场面试</p>
+      {query.isError && <Alert type="error" message={toAppError(query.error).message} />}
+      {query.data?.items.map((iv) => (
+        <p key={iv.id}>
+          <Link to={`/interviews/${iv.id}`}>
+            {iv.candidate_name} · 第 {iv.round_no} 轮 {iv.round_name}
+          </Link>{' '}
+          · {iv.start ? new Date(iv.start).toLocaleString() : '待约'}
+        </p>
+      ))}
+    </section>
   );
 }

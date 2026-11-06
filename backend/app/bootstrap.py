@@ -8,6 +8,8 @@ from app.modules.candidate.adapters.repository import SqlCandidates
 from app.modules.candidate.public import CandidateFacade
 from app.modules.conversation.public import ConversationFacade
 from app.modules.conversation.repository import SqlConversations
+from app.modules.interview.public import InterviewFacade
+from app.modules.interview.repository import SqlInterviews
 from app.modules.org.adapters.configuration import SqlConfiguration
 from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
@@ -33,6 +35,7 @@ class Container:
         self.clock = clock or SystemClock()
         self.db = Database(settings.database_url)
         self.crypto = Crypto(settings.encryption_key)
+        self.interview_gateway = None
 
     @contextmanager
     def scope(self):
@@ -86,7 +89,21 @@ class Container:
             )
             candidate.conversations = conversation
             application.conversations = conversation
+            interview = InterviewFacade(
+                SqlInterviews(session, self.crypto),
+                candidate,
+                application,
+                position,
+                org,
+                self.clock,
+                SqlJournal(session, self.clock),
+                self.settings,
+                self.interview_gateway,
+            )
+            candidate.interviews = interview
+            application.interviews = interview
             yield SimpleNamespace(
+                interview=interview,
                 conversation=conversation,
                 session=session,
                 position=position,

@@ -453,9 +453,8 @@ def test_merge_active_conflict_and_seven_day_limit(client, login, fields, contai
 
 
 def test_erase_removes_files_apps_identity_and_cached_pii(client, login, fields, container):
-    c = ok(upload(client, login, docx("姓名：删除测试\n手机：13800138000"), key="erase-upload"))[
-        "candidate"
-    ]
+    data = docx("姓名：删除测试\n手机：13800138000")
+    c = ok(upload(client, login, data, key="erase-upload"))["candidate"]
     _, p = opened(client, login, fields, container)
     ok(attach(client, login, c, p))
     assert ok(command(client, login, c, "erase", reason="候选人本人申请"))["deleted"]
@@ -467,12 +466,7 @@ def test_erase_removes_files_apps_identity_and_cached_pii(client, login, fields,
         assert not list(db.scalars(select(IdentityRecord)))
         for row in db.scalars(select(RequestRecord)):
             assert "13800138000" not in str(container.crypto.decrypt(row.response, row.key))
-    assert (
-        upload(
-            client, login, docx("姓名：删除测试\n手机：13800138000"), key="erase-upload"
-        ).status_code
-        == 404
-    )
+    assert upload(client, login, data, key="erase-upload").status_code == 404
 
 
 @pytest.mark.parametrize(

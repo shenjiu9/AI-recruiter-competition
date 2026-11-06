@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
+    "./interview-details": "./src/InterviewDetails.tsx",
     "./approval-transfer": "./src/ApprovalTransfer.tsx",
     "./directory-person-picker": "./src/DirectoryPersonPicker.tsx",
     "./requisition-notices": "./src/RequisitionNotices.tsx"

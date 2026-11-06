@@ -12,6 +12,7 @@ class CandidateFacade:
         self.store, self.org, self.clock, self.journal = store, org, clock, journal
         self.applications = None  # Public port wired by the composition root.
         self.conversations = None
+        self.interviews = None
 
     def lock(self, ctx):
         self.org.lock_configuration()
@@ -361,6 +362,7 @@ class CandidateFacade:
                 raise DomainError("VERSION_CONFLICT", "目标档案已更新或已合并，请刷新", 409)
             if other["merges"]:
                 raise DomainError("MERGE_NESTED", "请先撤销目标档案已有合并，再合并到主档案", 409)
+            self.interviews.guard_merge(self.family(c["id"]) + self.family(other["id"]))
             self.conversations.invalidate(
                 ctx, self.family(c["id"]) + self.family(other["id"]), revoke=True
             )
@@ -384,6 +386,7 @@ class CandidateFacade:
             ):
                 raise DomainError("MERGE_EXPIRED", "只能撤销 7 天内的合并", 409)
             other = self.store.get(command.target_id)
+            self.interviews.guard_merge(self.family(c["id"]))
             self.conversations.invalidate(ctx, self.family(c["id"]), revoke=True)
             other["merged_into"] = None
             other["do_not_contact"] = other["do_not_contact"] or c["do_not_contact"]
@@ -404,6 +407,7 @@ class CandidateFacade:
         self.touch(ctx, c, action)
         if action == "do_not_contact" or (action == "consent" and not command.granted):
             self.conversations.invalidate(ctx, self.family(c["id"]))
+            self.interviews.privacy_changed(ctx, self.family(c["id"]))
         return {"id": c["id"]}
 
     def resolve_request(self, ctx, cid, rid, resolution):
@@ -455,6 +459,9 @@ class CandidateFacade:
         else:
             raise DomainError("INVALID_ACTION", "不支持的操作")
         self.touch(ctx, c, action)
+
+        if action in {"revoke", "do_not_contact"}:
+            self.interviews.privacy_changed(ctx, self.family(c["id"]))
 
     def contactable(self, cid):
         c = self.canonical(cid)

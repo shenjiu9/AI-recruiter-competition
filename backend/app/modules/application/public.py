@@ -8,6 +8,7 @@ STAGES = ["reach", "talking", "ai_eval", "interview", "manager_eval", "hired"]
 class ApplicationFacade:
     def __init__(self, store, candidates, positions, clock, journal):
         self.conversations = None
+        self.interviews = None
         self.store, self.candidates, self.positions, self.clock, self.journal = (
             store,
             candidates,
@@ -189,6 +190,8 @@ class ApplicationFacade:
             )
             self.conversations.cancel_notice(ctx, app["canonical_id"], aid)
             self.save(ctx, app, "reopened")
+            if app["stage"] == "interview":
+                self.interviews.enter(ctx, app, pos)
             return {"id": aid}
         if app["outcome"] or pos["status"] == "closed":
             raise DomainError("INVALID_TRANSITION", "已结束的应聘记录只读", 409)
@@ -213,6 +216,8 @@ class ApplicationFacade:
             if STAGES.index(next_stage) > STAGES.index(app["furthest_stage"]):
                 app["furthest_stage"] = next_stage
             self.save(ctx, app, "stage_changed", old_stage)
+            if next_stage == "interview":
+                self.interviews.enter(ctx, app, pos)
         elif action == "rollback":
             if not (pos["canLead"] or pos["ownerId"] == ctx.principal.user_id):
                 raise DomainError("FORBIDDEN", "仅负责 HR 或招聘负责人可以回退", 403)
@@ -223,7 +228,10 @@ class ApplicationFacade:
             ):
                 raise DomainError("INVALID_TRANSITION", "请选择较早阶段并填写回退原因", 409)
             app["stage"] = command.target_stage
+            self.interviews.cancel_application(ctx, aid)
             self.save(ctx, app, "stage_changed", old_stage)
+            if app["stage"] == "interview":
+                self.interviews.enter(ctx, app, pos)
         else:
             if not command.reason or (action == "reject" and not command.reason_code):
                 raise DomainError("REASON_REQUIRED", "请填写终止原因；淘汰须选择原因分类")
@@ -243,6 +251,7 @@ class ApplicationFacade:
                 app["notice_at"] = self.conversations.queue_notice(ctx, app)
                 app["notice_status"] = "queued"
             self.save(ctx, app, "ended")
+            self.interviews.cancel_application(ctx, aid)
             if action == "transfer":
                 self.open(
                     ctx,
@@ -287,6 +296,7 @@ class ApplicationFacade:
                     notice_status="cancelled",
                 )
                 self.save(ctx, app, "ended")
+                self.interviews.cancel_application(ctx, app["id"])
 
     def rekey(self, ids, canonical_id):
         apps = self.store.all()
@@ -312,7 +322,25 @@ class ApplicationFacade:
             self.store.save(app, old)
 
     def erase(self, ids):
+        self.interviews.erase(ids)
         self.store.erase(ids)
+
+    def interview_context(self, aid):
+        return self.store.get(aid)
+
+    def interview_stage(self, ctx, aid, stage):
+        app = self.store.get(aid)
+        if not app or app["outcome"] or app["stage"] not in {"interview", "manager_eval"}:
+            raise DomainError("APPLICATION_ENDED", "应聘阶段已变更，不能自动推进或回退", 409)
+        if app["stage"] != stage:
+            state = self.positions.interview_state(app["position_id"])
+            if state["status"] == "closed" or state["frozen"]:
+                raise DomainError("POSITION_FROZEN", "岗位已关闭或冻结，不能变更应聘阶段", 409)
+            old = app["stage"]
+            app["stage"] = stage
+            if stage == "manager_eval":
+                app["furthest_stage"] = stage
+            self.save(ctx, app, "interview_result", old)
 
     def public_statuses(self, cid):
         labels = {

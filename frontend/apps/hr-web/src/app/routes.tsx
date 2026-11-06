@@ -10,6 +10,7 @@ import { RequisitionNewPage } from '../pages/RequisitionNewPage';
 import { RequisitionDetailPage } from '../pages/RequisitionDetailPage';
 import { RequisitionEditPage } from '../pages/RequisitionEditPage';
 import { InterviewsPage } from '../pages/InterviewsPage';
+import { LiveInterviewPage } from '../features/interview/ui/LiveInterviews';
 import { AutomationSettingsPage } from '../pages/AutomationSettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: 'candidates', element: <CandidateListPage /> },
       { path: 'candidates/:id', element: <CandidateDetailPage /> },
       { path: 'interviews', element: <InterviewsPage /> },
+      { path: 'interviews/:id', element: <LiveInterviewPage /> },
       { path: 'channels', element: <PlaceholderPage title="渠道" phase="第二期" /> },
       { path: 'insights', element: <PlaceholderPage title="数据洞察" phase="第二期" /> },
       { path: 'settings/automation', element: <AutomationSettingsPage /> },

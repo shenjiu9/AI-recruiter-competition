@@ -16,6 +16,7 @@ export function InboxPage() {
       {import.meta.env.VITE_USE_MOCK === 'false' && (
         <div className="rm-card">
           <Link to="/positions">岗位画像与关闭确认</Link>
+          <p><Link to="/interviews">我的面试与面评</Link></p>
         </div>
       )}
       <RequisitionNotices onOpen={setNoticeId} />
