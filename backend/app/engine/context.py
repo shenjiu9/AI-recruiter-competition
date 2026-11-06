@@ -1,9 +1,99 @@
-import json
 import re
+from datetime import date
 
 from app.kernel.types import DomainError
 from app.modules.candidate.parser import safe_text
 from app.modules.hiring.public import fingerprint
+
+STAGE_NAMES = {
+    "reach": "触达",
+    "talking": "沟通中",
+    "ai_eval": "AI 评估",
+    "interview": "面试",
+    "manager_eval": "用人经理评估",
+    "hired": "已录用",
+}
+OUTCOME_NAMES = {
+    "rejected": "淘汰",
+    "withdrawn": "候选人退出",
+    "transferred": "转岗",
+    "position_closed": "岗位关闭",
+    "declined": "拒绝录用",
+    "no_show": "未入职",
+    "joined": "已入职",
+}
+REASON_NAMES = {
+    "requirements": "不符合职业要求",
+    "experience": "经验不足",
+    "skills": "技能不匹配",
+    "salary": "薪资不匹配",
+    "location": "地点不匹配",
+    "other": "其他",
+}
+SOURCE_NAMES = {"hr": "HR 添加", "candidate": "候选人自主投递"}
+DEFAULT_QUESTION = "请总结该岗位当前招聘进度和主要瓶颈，并给出可执行的改进建议。"
+
+
+def _join(counts, names):
+    return "，".join(f"{names.get(k, k)} {v} 人" for k, v in counts.items() if v) or "无"
+
+
+def _rate(part, whole):
+    return f"{round(100 * part / whole, 1):g}%"
+
+
+def insight_sources(pos, metrics):
+    """Readable, labelled aggregates; the model cites these keys and may only reuse
+    their figures. No candidate-level data leaves this function."""
+    planned, hired, today = pos["planned"], pos["hired"], date.fromisoformat(metrics["today"])
+    stages = list(STAGE_NAMES)
+    reached = metrics["reached"]
+    sources = {
+        "headcount": f"计划招聘 {planned} 人，已录用 {hired} 人，剩余名额 {max(0, planned - hired)} 人。",
+        "funnel": f"累计应聘 {metrics['total']} 人，当前在途 {metrics['active']} 人。"
+        f"各阶段在途人数：{_join({k: metrics['stages'][k] for k in stages}, STAGE_NAMES)}。",
+    }
+    steps = [
+        f"{STAGE_NAMES[a]}→{STAGE_NAMES[b]} {_rate(reached[b], reached[a])}"
+        for a, b in zip(stages, stages[1:])
+        if reached[a]
+    ]
+    if metrics["total"]:
+        sources["conversion"] = (
+            f"累计进入各阶段人数（含已结束）：{_join(reached, STAGE_NAMES)}。"
+            + (f"阶段转化率：{'，'.join(steps)}。" if steps else "")
+        )
+    ended = sum(metrics["outcomes"].values())
+    if ended:
+        sources["outcomes"] = (
+            f"已结束 {ended} 人：{_join(metrics['outcomes'], OUTCOME_NAMES)}。"
+            f"结束时所处阶段：{_join(metrics['ended_at_stage'], STAGE_NAMES)}。"
+        )
+    if metrics["reasons"]:
+        sources["reject_reasons"] = f"淘汰原因分布：{_join(metrics['reasons'], REASON_NAMES)}。"
+    idle = metrics["idle_days"]
+    if idle:
+        stale = sum(metrics["stale"].values())
+        sources["aging"] = (
+            f"未录用的在途候选人 {len(idle)} 人，当前阶段停留天数中位数 {idle[len(idle) // 2]} 天，"
+            f"最长 {idle[-1]} 天；停留 {metrics['stale_days']} 天及以上 {stale} 人"
+            + (f"（{_join(metrics['stale'], STAGE_NAMES)}）" if stale else "")
+            + "。"
+        )
+    if metrics["sources"]:
+        sources["channels"] = f"应聘来源：{_join(metrics['sources'], SOURCE_NAMES)}。"
+    expected = (pos["fields"].get("expectedOnboard") or "").strip()
+    try:
+        gap = (date.fromisoformat(expected[:10]) - today).days
+    except ValueError:
+        gap = None
+    if gap is not None:
+        sources["timeline"] = (
+            f"期望到岗日期 {expected[:10]}，距今还有 {gap} 天。"
+            if gap >= 0
+            else f"期望到岗日期 {expected[:10]}，已超过 {-gap} 天。"
+        )
+    return sources
 
 
 def sanitize(value, candidate=None):
@@ -106,7 +196,8 @@ def build(s, ctx, component, object_id, prompt=""):
         data["positions"].append(pid)
     for position_id in sorted(set(data["positions"])):
         pos = s.position.hiring_context(position_id)
-        visible = s.position.get(ctx, position_id) if component != "A6" else None
+        if component != "A6":
+            s.position.get(ctx, position_id)  # visibility check for the requesting HR
         if (
             pos["status"] == "closed"
             or pos["frozen"]
@@ -139,10 +230,8 @@ def build(s, ctx, component, object_id, prompt=""):
                         {"id": f"{prefix}{i + 1}", "text": line, "kind": key, "weight": weight}
                     )
         if component == "A7":
-            data["sources"] = {
-                "position_counts": json.dumps(visible["candidateCounts"], ensure_ascii=False),
-                "headcount": f"计划{pos['planned']}，已录用{pos['hired']}",
-            }
+            data["sources"] = insight_sources(pos, s.application.insight_metrics(position_id))
+            data["prompt"] = data["prompt"] or DEFAULT_QUESTION
     config = s.automation.current()
     data["policy_versions"] = [config["version"]]
     for position_id in sorted(set(data["positions"])):
