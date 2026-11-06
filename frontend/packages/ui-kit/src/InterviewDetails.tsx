@@ -1,3 +1,4 @@
+import { ActionButton } from './controls';
 import { useState } from 'react';
 import {
   useApi,
@@ -40,9 +41,9 @@ const fieldStyle = {
   marginBlock: 6,
 };
 const blockStyle = {
-  background: '#fff',
-  border: '1px solid #dfe5ec',
-  borderRadius: 10,
+  background: 'var(--rc-surface)',
+  border: '1px solid var(--rc-line)',
+  borderRadius: 16,
   padding: 16,
   marginBlock: 16,
 };
@@ -171,7 +172,7 @@ export function InterviewDetails({
           <h3>HR 排期与状态操作</h3>
           <fieldset disabled={op.locked} style={{ border: 0, padding: 0 }}>
             {iv.status === 'needs_configuration' && (
-              <button onClick={() => run('configure')}>使用岗位最新流程</button>
+              <ActionButton onClick={() => run('configure')}>使用岗位最新流程</ActionButton>
             )}
             {['waiting', 'offered'].includes(iv.status) && (
               <>
@@ -204,12 +205,12 @@ export function InterviewDetails({
                   我已核实外部日历忙闲和面试安排
                 </label>
                 <br />
-                <button
+                <ActionButton
                   disabled={!verified}
                   onClick={() => run('offer', { verified, location, meeting_url: meeting })}
                 >
                   生成候选人可选时段
-                </button>
+                </ActionButton>
                 <label>
                   手动安排时间（本机时区）
                   <input
@@ -220,7 +221,7 @@ export function InterviewDetails({
                     onChange={(e) => setStart(e.target.value)}
                   />
                 </label>
-                <button
+                <ActionButton
                   disabled={!verified || !start}
                   onClick={() =>
                     run('book', {
@@ -232,7 +233,7 @@ export function InterviewDetails({
                   }
                 >
                   确认手动安排
-                </button>
+                </ActionButton>
               </>
             )}
             {iv.slots.map((s) => (
@@ -253,28 +254,30 @@ export function InterviewDetails({
             </label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {['scheduled', 'offered', 'no_show'].includes(iv.status) && (
-                <button disabled={!reason.trim()} onClick={() => run('reschedule')}>
+                <ActionButton disabled={!reason.trim()} onClick={() => run('reschedule')}>
                   重新协调时间
-                </button>
+                </ActionButton>
               )}
               {iv.status === 'scheduled' && (
                 <>
-                  <button disabled={!reason.trim()} onClick={() => run('complete')}>
+                  <ActionButton disabled={!reason.trim()} onClick={() => run('complete')}>
                     确认面试已结束
-                  </button>
-                  <button disabled={!reason.trim()} onClick={() => run('no_show')}>
+                  </ActionButton>
+                  <ActionButton disabled={!reason.trim()} onClick={() => run('no_show')}>
                     确认候选人缺席
-                  </button>
+                  </ActionButton>
                 </>
               )}
               {!['completed', 'cancelled'].includes(iv.status) && (
-                <button disabled={!reason.trim()} onClick={() => run('cancel')}>
+                <ActionButton disabled={!reason.trim()} onClick={() => run('cancel')}>
                   取消本场面试
-                </button>
+                </ActionButton>
               )}
               {['failed', 'uncertain_meeting', 'uncertain_calendar'].includes(
                 iv.integration_state,
-              ) && <button onClick={() => run('retry_integration')}>重试外部同步</button>}
+              ) && (
+                <ActionButton onClick={() => run('retry_integration')}>重试外部同步</ActionButton>
+              )}
             </div>
           </fieldset>
         </section>
@@ -377,7 +380,7 @@ export function InterviewDetails({
               我已核对并对内容负责
             </label>
             <br />
-            <button
+            <ActionButton
               disabled={
                 !checked || recused || !['awaiting_feedback', 'completed'].includes(iv.status)
               }
@@ -395,7 +398,7 @@ export function InterviewDetails({
               }
             >
               {iv.my_feedback ? '保存面评修改' : '提交本人面评'}
-            </button>
+            </ActionButton>
             <p>
               首次提交后 24
               小时内可修改并留痕；结论已用于后续安排时须先协调。此后仅追加备注。不推荐不会自动淘汰。
@@ -413,33 +416,33 @@ export function InterviewDetails({
               </label>
             )}
             {['scheduled', 'offered'].includes(iv.status) && (
-              <button disabled={!reason.trim()} onClick={() => run('request_reschedule')}>
+              <ActionButton disabled={!reason.trim()} onClick={() => run('request_reschedule')}>
                 申请面试改期
-              </button>
+              </ActionButton>
             )}
             {iv.my_feedback && (
-              <button disabled={!reason.trim()} onClick={() => run('remark')}>
+              <ActionButton disabled={!reason.trim()} onClick={() => run('remark')}>
                 追加面评备注
-              </button>
+              </ActionButton>
             )}
           </fieldset>
         </section>
       )}
       {op.error && <p role="alert">{op.error}</p>}
       {op.retry && (
-        <button disabled={op.busy} onClick={op.retryAction}>
+        <ActionButton disabled={op.busy} onClick={op.retryAction}>
           重试本次操作
-        </button>
+        </ActionButton>
       )}
       {op.conflict && (
-        <button
+        <ActionButton
           onClick={async () => {
             await refresh();
             op.refreshed();
           }}
         >
           刷新面试记录
-        </button>
+        </ActionButton>
       )}
       <section style={blockStyle}>
         <h3>面评记录</h3>

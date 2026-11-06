@@ -1,3 +1,4 @@
+import { ActionButton } from '@recruiter/ui-kit/controls';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -41,13 +42,16 @@ export function InterviewsPage() {
         </article>
       ))}
       {query.data?.total === 0 && <p>暂无分配给您的面试。</p>}
-      <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+      <ActionButton disabled={page === 1} onClick={() => setPage(page - 1)}>
         上一页
-      </button>
+      </ActionButton>
       <span> 第 {page} 页 </span>
-      <button disabled={page * 20 >= (query.data?.total ?? 0)} onClick={() => setPage(page + 1)}>
+      <ActionButton
+        disabled={page * 20 >= (query.data?.total ?? 0)}
+        onClick={() => setPage(page + 1)}
+      >
         下一页
-      </button>
+      </ActionButton>
       {pref.data && (
         <AvailabilityForm
           initial={pref.data}
@@ -117,19 +121,19 @@ function AvailabilityForm({
             />
           </label>
         ))}
-        <button
+        <ActionButton
           onClick={() => {
             const { version, ...body } = value;
             void op.submit({ ...body, expected_version: version });
           }}
         >
           保存可面设置
-        </button>
+        </ActionButton>
       </fieldset>
       {op.error && <p role="alert">{op.error}</p>}
-      {op.retry && <button onClick={op.retryAction}>重试本次操作</button>}
+      {op.retry && <ActionButton onClick={op.retryAction}>重试本次操作</ActionButton>}
       {op.conflict && (
-        <button
+        <ActionButton
           onClick={async () => {
             const latest = await api.interviewAvailability();
             setValue((v) => ({ ...v, version: latest.version }));
@@ -137,7 +141,7 @@ function AvailabilityForm({
           }}
         >
           刷新设置版本
-        </button>
+        </ActionButton>
       )}
     </section>
   );

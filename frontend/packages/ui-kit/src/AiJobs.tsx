@@ -1,3 +1,4 @@
+import { ActionButton } from './controls';
 import { useState } from 'react';
 import { useApi, useReliableWrite, type AiJob } from '@recruiter/api-client';
 import { useLiveData } from './LiveHiring';
@@ -25,11 +26,11 @@ const states: Record<string, string> = {
   deferred: '等待可联系时段',
 };
 const box = {
-  background: '#fff',
+  background: 'var(--rc-surface)',
   padding: 16,
   marginBlock: 16,
-  border: '1px solid #dfe5ec',
-  borderRadius: 10,
+  border: '1px solid var(--rc-line)',
+  borderRadius: 16,
 };
 const input = {
   display: 'block',
@@ -142,7 +143,7 @@ function TargetPicker({
         <p>已选中详情页的应聘记录，可直接创建任务，或重新选择岗位。</p>
       )}
       {component === 'A5' && position && (
-        <button
+        <ActionButton
           type="button"
           onClick={() => {
             setPosition('');
@@ -150,22 +151,22 @@ function TargetPicker({
           }}
         >
           重新选择岗位
-        </button>
+        </ActionButton>
       )}
       {options.error && <p role="alert">{options.error}</p>}
       {(component !== 'A5' || !position) && (
         <div>
-          <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <ActionButton type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
             上一组对象
-          </button>{' '}
+          </ActionButton>{' '}
           第 {page} 页{' '}
-          <button
+          <ActionButton
             type="button"
             disabled={page * 20 >= (options.data?.total ?? 0)}
             onClick={() => setPage(page + 1)}
           >
             下一组对象
-          </button>
+          </ActionButton>
         </div>
       )}
     </fieldset>
@@ -190,6 +191,13 @@ function JsonView({ value }: { value: unknown }) {
     );
   const labels: Record<string, string> = {
     fields: '建议字段',
+    id: '条目',
+    kb_ref: '知识来源',
+    intents: '识别意图',
+    needs_human: '需要人工处理',
+    keywords: '搜索关键词',
+    exclude: '排除词',
+    city: '城市',
     value: '提取内容',
     evidence: '原文证据',
     ref: '来源编号',
@@ -303,7 +311,8 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
             {job.status === 'review' && (
               <>
-                <button
+                <ActionButton
+                  className="rc-primary"
                   disabled={op.locked || !verified || !reason.trim()}
                   onClick={() => submit('approve')}
                 >
@@ -312,30 +321,33 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
                     !['advance', 'reject'].includes(String(job.output?.conclusion)))
                     ? '确认已阅建议'
                     : '确认并执行'}
-                </button>
-                <button disabled={op.locked || !reason.trim()} onClick={() => submit('reject')}>
+                </ActionButton>
+                <ActionButton
+                  disabled={op.locked || !reason.trim()}
+                  onClick={() => submit('reject')}
+                >
                   不采纳
-                </button>
+                </ActionButton>
               </>
             )}
             {job.status === 'dead' ? (
-              <button disabled={op.locked || !reason.trim()} onClick={() => submit('retry')}>
+              <ActionButton disabled={op.locked || !reason.trim()} onClick={() => submit('retry')}>
                 重新排队
-              </button>
+              </ActionButton>
             ) : (
-              <button disabled={op.locked || !reason.trim()} onClick={() => submit('cancel')}>
+              <ActionButton disabled={op.locked || !reason.trim()} onClick={() => submit('cancel')}>
                 取消任务
-              </button>
+              </ActionButton>
             )}
           </div>
           {op.error && <p role="alert">{op.error}</p>}
           {op.retry && (
-            <button onClick={op.retryAction} disabled={op.busy}>
+            <ActionButton onClick={op.retryAction} disabled={op.busy}>
               重试同一次提交
-            </button>
+            </ActionButton>
           )}
           {op.conflict && (
-            <button
+            <ActionButton
               onClick={() =>
                 void api.aiJob(job.id).then((j) => {
                   refresh(j);
@@ -344,7 +356,7 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
               }
             >
               刷新后重新核对
-            </button>
+            </ActionButton>
           )}
         </>
       )}
@@ -374,7 +386,8 @@ export function AiJobs({ business = false }: { business?: boolean }) {
   );
   const configured = health.data?.components[component] && health.data?.enabled[component];
   return (
-    <main style={{ maxWidth: 1000, padding: 16, margin: 'auto' }}>
+    <main className="rc-ai-workspace">
+      <span className="rc-eyebrow">AI STUDIO · 人机协作</span>
       <h1>AI 任务与复核</h1>
       <p>生成建议后核对原文。影子模式只记录结果；录用决定和面试评分由对应负责人完成。</p>
       {health.error && <p role="alert">{health.error}</p>}
@@ -433,12 +446,14 @@ export function AiJobs({ business = false }: { business?: boolean }) {
             onChange={(e) => setPrompt(e.target.value)}
           />
         </label>
-        <button disabled={start.locked || !configured || !objectId.trim()}>创建 AI 任务</button>
+        <ActionButton type="submit" disabled={start.locked || !configured || !objectId.trim()}>
+          创建 AI 任务
+        </ActionButton>
         {start.error && <p role="alert">{start.error}</p>}
         {start.retry && (
-          <button type="button" onClick={start.retryAction} disabled={start.busy}>
+          <ActionButton type="button" onClick={start.retryAction} disabled={start.busy}>
             重试同一次提交
-          </button>
+          </ActionButton>
         )}
       </form>
       {detail.error && <p role="alert">{detail.error}</p>}
@@ -457,21 +472,24 @@ export function AiJobs({ business = false }: { business?: boolean }) {
       {jobs.data?.total === 0 && <p>暂无任务。从岗位、候选人或面试详情可发起对应任务。</p>}
       {jobs.data?.items.map((job) => (
         <article style={box} key={job.id}>
-          <button onClick={() => setSelected(job.id)}>
+          <ActionButton onClick={() => setSelected(job.id)}>
             {names[job.component]} · {states[job.status] ?? job.status}
-          </button>
+          </ActionButton>
           <p style={{ overflowWrap: 'anywhere' }}>
             {job.object_id} · {new Date(job.created_at).toLocaleString()}
           </p>
         </article>
       ))}
-      <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+      <ActionButton disabled={page === 1} onClick={() => setPage(page - 1)}>
         上一页
-      </button>{' '}
+      </ActionButton>{' '}
       第 {page} 页{' '}
-      <button disabled={page * 20 >= (jobs.data?.total ?? 0)} onClick={() => setPage(page + 1)}>
+      <ActionButton
+        disabled={page * 20 >= (jobs.data?.total ?? 0)}
+        onClick={() => setPage(page + 1)}
+      >
         下一页
-      </button>
+      </ActionButton>
     </main>
   );
 }

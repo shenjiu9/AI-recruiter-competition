@@ -1,10 +1,27 @@
 import type { ReactNode } from 'react';
 
-export function PageHeader({ title, sub, extra }: { title: ReactNode; sub?: ReactNode; extra?: ReactNode }) {
+export function PageHeader({
+  title,
+  sub,
+  extra,
+}: {
+  title: ReactNode;
+  sub?: ReactNode;
+  extra?: ReactNode;
+}) {
   return (
-    <header className="hr-page-header">
+    <header
+      className="rc-page-header hr-page-header"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 16,
+        marginBottom: 20,
+        flexWrap: 'wrap',
+      }}
+    >
       <div style={{ minWidth: 0 }}>
-        <h1>{title}</h1>
+        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 650, lineHeight: 1.35 }}>{title}</h1>
         {sub && <div className="sub">{sub}</div>}
       </div>
       {extra && <div className="extra">{extra}</div>}

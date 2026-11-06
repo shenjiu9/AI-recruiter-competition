@@ -1,3 +1,4 @@
+import { Button } from 'antd-mobile';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -90,7 +91,7 @@ function CandidateInterview({
           </label>
         )}
         {iv.slots.map((s) => (
-          <button
+          <Button
             key={s.id}
             style={{ display: 'block', marginBlock: 10, padding: 10, width: '100%' }}
             onClick={() =>
@@ -103,7 +104,7 @@ function CandidateInterview({
             }
           >
             选择 {new Date(s.start).toLocaleString()}
-          </button>
+          </Button>
         ))}
         {iv.status === 'offered' && (
           <p>时段占位有效期 24 小时，逾期请联系 HR。时间按您的设备时区显示。</p>
@@ -120,7 +121,7 @@ function CandidateInterview({
                 style={{ width: '100%', boxSizing: 'border-box', padding: 10, fontSize: 16 }}
               />
             </label>
-            <button
+            <Button
               disabled={!reason.trim()}
               onClick={() =>
                 void op.submit({
@@ -131,7 +132,7 @@ function CandidateInterview({
               }
             >
               申请调整面试时间
-            </button>
+            </Button>
             <p>
               距开始至少 2 小时且前两次改期可释放原时段，随后由 HR
               提供新时段；临近开始或第三次起保留原安排并转 HR 协调。
@@ -145,16 +146,16 @@ function CandidateInterview({
         </p>
       ))}
       {op.error && <p role="alert">{op.error}</p>}
-      {op.retry && <button onClick={op.retryAction}>重试本次操作</button>}
+      {op.retry && <Button onClick={op.retryAction}>重试本次操作</Button>}
       {op.conflict && (
-        <button
+        <Button
           onClick={async () => {
             await refresh();
             op.refreshed();
           }}
         >
           刷新可选时段
-        </button>
+        </Button>
       )}
     </article>
   );

@@ -1,5 +1,8 @@
+import { ActionButton } from '@recruiter/ui-kit/controls';
 import { useState } from 'react';
 import { useSession } from '@recruiter/auth';
+import { Alert, Card, Empty, Input, Select } from 'antd';
+import { useQuery } from '@tanstack/react-query';
 import {
   useApi,
   useReliableWrite,
@@ -14,11 +17,19 @@ export function LiveAutomation() {
   const [scope, setScope] = useState(session?.roles.includes('admin') ? 'global' : 'position');
   const [target, setTarget] = useState('');
   const [dept, setDept] = useState('');
+  const [search, setSearch] = useState('');
+  const positions = useQuery({
+    queryKey: ['automation-position-picker', search],
+    queryFn: () => api.positionPage(1, '', { query: search }),
+    enabled: scope === 'position',
+  });
+  const ready = scope === 'global' || (!!target.trim() && (scope === 'position' || !!dept.trim()));
   const query = useLiveData(JSON.stringify([scope, target, dept]), () =>
-    api.liveAutomation({ scope, target, dept }),
+    ready ? api.liveAutomation({ scope, target, dept }) : Promise.resolve(undefined),
   );
   return (
-    <main style={{ maxWidth: 1000 }}>
+    <main className="rc-automation-page" style={{ maxWidth: 1000 }}>
+      <span className="rc-eyebrow">WORKFLOW SETTINGS</span>
       <h1>自动化策略与录用审批规则</h1>
       <p>
         配置按全局 → 部门序列 → 岗位覆盖。淘汰最高 L2，录用建议固定 L1；录用决定和审批始终由人完成。
@@ -28,27 +39,76 @@ export function LiveAutomation() {
         工作流并启动后台任务后，正常模式按策略执行；影子模式只记录结果。当前支持沟通回复和证据评估的
         L3 执行，其他组件提供待复核建议。<a href="/ai-jobs">查看连接状态与任务</a>
       </p>
-      <label>
-        配置范围{' '}
-        <select aria-label="配置范围" value={scope} onChange={(e) => setScope(e.target.value)}>
-          {session?.roles.includes('admin') && <option value="global">全局</option>}
-          <option value="series">部门序列</option>
-          <option value="position">岗位</option>
-        </select>
-      </label>
-      {scope === 'series' && (
+      <Card className="rc-automation-scope">
         <label>
-          部门{' '}
-          <input aria-label="策略部门" value={dept} onChange={(e) => setDept(e.target.value)} />
+          配置范围{' '}
+          <select
+            aria-label="配置范围"
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setTarget('');
+            }}
+          >
+            {session?.roles.includes('admin') && <option value="global">全局</option>}
+            <option value="series">部门序列</option>
+            <option value="position">岗位</option>
+          </select>
         </label>
+        {scope === 'series' && (
+          <label>
+            部门{' '}
+            <input aria-label="策略部门" value={dept} onChange={(e) => setDept(e.target.value)} />
+          </label>
+        )}
+        {scope === 'position' && (
+          <label>
+            选择岗位
+            <Select
+              aria-label="策略岗位"
+              placeholder="搜索并选择要配置的岗位"
+              showSearch
+              allowClear
+              filterOption={false}
+              loading={positions.isFetching}
+              value={target || undefined}
+              onSearch={setSearch}
+              onChange={(id) => setTarget(id ?? '')}
+              options={positions.data?.items.map((p) => ({
+                value: p.id,
+                label: `${p.name} · ${p.dept}`,
+              }))}
+              notFoundContent={
+                positions.isError ? '岗位加载失败，请重试' : '未找到岗位，请调整搜索词'
+              }
+              style={{ width: '100%', minWidth: 200 }}
+            />
+          </label>
+        )}
+        {scope === 'series' && (
+          <label>
+            序列名称{' '}
+            <Input
+              aria-label="策略对象"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            />
+          </label>
+        )}
+      </Card>
+      {!ready && (
+        <Card>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              scope === 'position'
+                ? '选择一个岗位，查看并调整它的自动化策略。'
+                : '填写部门与序列，查看对应策略。'
+            }
+          />
+        </Card>
       )}
-      {scope !== 'global' && (
-        <label>
-          {scope === 'position' ? '岗位编号' : '序列名称'}{' '}
-          <input aria-label="策略对象" value={target} onChange={(e) => setTarget(e.target.value)} />
-        </label>
-      )}
-      {query.error && <p role="alert">{query.error}</p>}
+      {ready && query.error && <Alert type="error" showIcon message={query.error} />}
       {query.data && (
         <Configuration
           key={query.data.id}
@@ -102,11 +162,11 @@ function Configuration({
           }),
     });
   return (
-    <section style={{ background: '#fff', padding: 20, marginBlock: 16 }}>
+    <section className="rc-automation-config">
       <p>版本 {draft.version}</p>
       <fieldset disabled={op.locked} style={{ border: 0, padding: 0 }}>
         {draft.nodes.map((n) => (
-          <label style={{ display: 'block', marginBlock: 12 }} key={n.key}>
+          <label className="rc-policy-row" key={n.key}>
             {n.name}{' '}
             <select
               aria-label={`${n.name}等级`}
@@ -224,20 +284,24 @@ function Configuration({
           </>
         )}
         <p>
-          <button onClick={() => save()}>保存策略配置</button>
+          <ActionButton className="rc-primary" onClick={() => save()}>
+            保存策略配置
+          </ActionButton>
         </p>
         <h2>历史版本</h2>
         {draft.history.map((h) => (
           <p key={h.version}>
             版本 {h.version} · {new Date(h.at).toLocaleString()}{' '}
-            <button onClick={() => save(h.version)}>恢复版本 {h.version} 为新版本</button>
+            <ActionButton onClick={() => save(h.version)}>
+              恢复版本 {h.version} 为新版本
+            </ActionButton>
           </p>
         ))}
       </fieldset>
       {op.error && <p role="alert">{op.error}</p>}
-      {op.retry && <button onClick={op.retryAction}>重试本次操作</button>}
+      {op.retry && <ActionButton onClick={op.retryAction}>重试本次操作</ActionButton>}
       {op.conflict && (
-        <button
+        <ActionButton
           onClick={async () => {
             const latest = await refresh();
             if (latest) {
@@ -247,7 +311,7 @@ function Configuration({
           }}
         >
           刷新策略版本
-        </button>
+        </ActionButton>
       )}
     </section>
   );

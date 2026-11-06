@@ -273,6 +273,7 @@ export function LiveCandidateList() {
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search
           aria-label="搜索候选人"
+          key={query}
           defaultValue={query}
           placeholder="姓名、手机号、邮箱、公司、技能、标签"
           onSearch={(v) => filter('query', v)}
