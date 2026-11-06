@@ -2,6 +2,8 @@
 
 状态：B04a。依据 PRD 5.1、7.6、8.4 和详细设计的 position 门面及消费组 inbox。不是完整岗位模块或外部渠道发布验收。
 
+后续更新：画像生效版本、知识披露、JD 审批、经理关闭确认、协作和同岗超时已在 [ADR 0009](0009-position-content-and-collaboration.md) 实现。本文保留首批交付时的决策与边界。
+
 ## 事件与事务
 
 迁移 `0006` 新增 `pos.position`、`pos.generation`、`platform.inbox`。需求模块仍只发布 `requisition.approved`；公开的 `approved_snapshot` 校验终态和事件版本并提供数据，岗位模块不访问需求私有表。

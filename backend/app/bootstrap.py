@@ -8,6 +8,7 @@ from app.modules.org.adapters.repository import SqlDirectory
 from app.modules.org.adapters.salary import SqlSalary
 from app.modules.org.public import OrgFacade
 from app.modules.position.adapters.repository import SqlPositions
+from app.modules.position.calendar import WorkCalendar
 from app.modules.position.public import PositionFacade
 from app.modules.requisition.adapters.repository import SqlRepository
 from app.modules.requisition.adapters.transfers import SqlTransfers
@@ -53,6 +54,7 @@ class Container:
                     org,
                     self.clock,
                     SqlJournal(session, self.clock),
+                    WorkCalendar(self.settings.position_holidays, self.settings.position_workdays),
                 ),
                 org=org,
                 auth=Auth(self.settings, self.clock, org),

@@ -60,10 +60,18 @@ class RequisitionCommands(FormDirectory, TransferCommands):
         actors = {req.creator_id, req.manager_id, *(n["approver_id"] for n in req.chain)}
         actors.add(req.owner_id)
         actors.update(x.strip() for x in req.fields.get("visibleTo", "").split(",") if x.strip())
-        return p.user_id in actors or (
-            req.fields.get("confidential") != "1"
-            and req.dept in p.departments
-            and bool({"recruiting_lead", "hiring_manager", "hrbp"}.intersection(p.roles))
+        return (
+            p.user_id in actors
+            or (
+                req.dept in p.departments
+                and bool(HR_ROLES.intersection(p.roles))
+                and self.repo.position_reader(req.id, p.user_id)
+            )
+            or (
+                req.fields.get("confidential") != "1"
+                and req.dept in p.departments
+                and bool({"recruiting_lead", "hiring_manager", "hrbp"}.intersection(p.roles))
+            )
         )
 
     def get_entity(self, ctx, req_id):

@@ -66,6 +66,14 @@ class SqlPositions:
         row = self.session.get(GenerationRecord, req_id, populate_existing=True)
         return self.crypto.decrypt(row.data, req_id) if row else None
 
+    def pending_generations(self):
+        return [
+            self.crypto.decrypt(r.data, r.requisition_id)
+            for r in self.session.scalars(
+                select(GenerationRecord).where(GenerationRecord.position_id.is_(None))
+            )
+        ]
+
     def save_generation(self, task, previous=None):
         values = dict(
             position_id=task.get("position_id"),

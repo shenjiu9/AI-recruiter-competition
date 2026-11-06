@@ -69,6 +69,8 @@ def run_once(container, limit=20):
             logging.getLogger("recruiter").warning(
                 "position_event_failed event_id=%s code=%s", event_id, code
             )
+    with container.scope() as services:
+        completed += services.position.expire_generations()
     return {"completed": completed, "failed": failed}
 
 
@@ -76,9 +78,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--retry-event", help="Explicitly retry one failed persisted event")
     parser.add_argument("--status", action="store_true")
+    parser.add_argument(
+        "--sync-source-access",
+        action="store_true",
+        help="Rebuild source visibility after upgrading to 0007",
+    )
     args = parser.parse_args()
     container = build_container(Settings())
-    if args.status:
+    if args.sync_source_access:
+        with container.scope() as services:
+            print({"positions_synced": services.position.sync_source_access()})
+    elif args.status:
         with container.db.sessions() as session:
             for row in session.scalars(
                 select(InboxRecord).where(

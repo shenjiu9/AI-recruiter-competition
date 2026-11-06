@@ -7,6 +7,7 @@ import '@recruiter/mobile-ui';
 import { InboxPage } from '../pages/InboxPage';
 import { BriefPage } from '../pages/BriefPage';
 import { FeedbackPage } from '../pages/FeedbackPage';
+import { PositionsPage, PositionReviewPage } from '../pages/PositionsPage';
 
 const apiConfig: ApiConfig = {
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
@@ -17,6 +18,8 @@ const router = createBrowserRouter([
   { path: '/', element: <InboxPage /> },
   { path: '/brief/:appId', element: <BriefPage /> },
   { path: '/feedback/:appId', element: <FeedbackPage /> },
+  { path: '/positions', element: <PositionsPage /> },
+  { path: '/positions/:id', element: <PositionReviewPage /> },
 ]);
 
 /** 飞书内 H5：业务方只看需要他决定的事，30 秒内完成一个决定 */

@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,6 +13,8 @@ class Settings(BaseSettings):
     dev_auth_enabled: bool = False
     dev_login_password: str = ""
     position_worker_enabled: bool = True
+    position_holidays: list[date] = []
+    position_workdays: list[date] = []
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:5174",

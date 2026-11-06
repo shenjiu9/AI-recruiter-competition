@@ -54,6 +54,7 @@ export function createMockClient(): ApiClient {
   };
   return {
     positionPage: backendOnly,
+    positionKnowledgePreview: backendOnly,
     positionDetail: backendOnly,
     positionCommand: backendOnly,
     positionGeneration: backendOnly,

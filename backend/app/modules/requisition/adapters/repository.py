@@ -3,7 +3,11 @@ from datetime import UTC, datetime
 from sqlalchemy import and_, delete, func, or_, select, update
 
 from app.kernel.types import DomainError
-from app.modules.requisition.adapters.orm import AccessRecord, RequisitionRecord
+from app.modules.requisition.adapters.orm import (
+    AccessRecord,
+    PositionAccessRecord,
+    RequisitionRecord,
+)
 from app.modules.requisition.domain.model import Requisition
 
 
@@ -64,6 +68,19 @@ class SqlRepository:
         record = self.session.get(RequisitionRecord, req_id)
         return self._entity(record) if record else None
 
+    def set_position_readers(self, req_id, user_ids):
+        self.session.execute(
+            delete(PositionAccessRecord).where(PositionAccessRecord.requisition_id == req_id)
+        )
+        self.session.add_all(
+            PositionAccessRecord(requisition_id=req_id, user_id=uid)
+            for uid in sorted(set(user_ids))
+        )
+        self.session.flush()
+
+    def position_reader(self, req_id, user_id):
+        return self.session.get(PositionAccessRecord, (req_id, user_id)) is not None
+
     def open_requests(self):
         return [
             self._entity(r)
@@ -108,6 +125,17 @@ class SqlRepository:
             AccessRecord.user_id == principal.user_id
         )
         scope = RequisitionRecord.id.in_(visible)
+        if {"recruiter", "recruiting_lead", "hrbp"}.intersection(principal.roles):
+            position_sources = select(PositionAccessRecord.requisition_id).where(
+                PositionAccessRecord.user_id == principal.user_id
+            )
+            scope = or_(
+                scope,
+                and_(
+                    RequisitionRecord.id.in_(position_sources),
+                    RequisitionRecord.dept.in_(principal.departments),
+                ),
+            )
         if {"recruiting_lead", "hiring_manager", "hrbp"}.intersection(principal.roles):
             scope = or_(
                 scope,

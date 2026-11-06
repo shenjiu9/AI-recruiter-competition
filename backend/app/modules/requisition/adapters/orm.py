@@ -25,3 +25,10 @@ class AccessRecord(Base):
     __table_args__ = {"schema": "req"}
     requisition_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+
+class PositionAccessRecord(Base):
+    __tablename__ = "position_source_access"
+    __table_args__ = {"schema": "req"}
+    requisition_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)

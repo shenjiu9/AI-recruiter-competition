@@ -2,6 +2,14 @@ from app.modules.requisition.application.commands import RequisitionCommands
 
 
 class RequisitionFacade(RequisitionCommands):
+    def set_position_readers(self, req_id, user_ids):
+        from app.kernel.types import DomainError
+
+        req = self.repo.get(req_id)
+        if not req or req.status != "approved":
+            raise DomainError("APPROVED_SOURCE_INVALID", "岗位来源必须为已通过需求")
+        self.repo.set_position_readers(req_id, user_ids)
+
     def approved_snapshot(self, req_id, version):
         from app.kernel.types import DomainError
 

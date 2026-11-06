@@ -1,77 +1,7 @@
-import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
-
+import { test, expect } from '@playwright/test';
+import { headers, login, approve, projection, ready, clickAction } from './position-helpers';
 test.use({ actionTimeout: 15_000 });
 const API = 'http://127.0.0.1:8010/api/v1';
-
-async function headers(request: APIRequestContext, actor = 'hr') {
-  const r = await request.post(`${API}/auth/dev-login`, {
-    data: { user_id: actor, password: 'e2e-only-password' },
-  });
-  expect(r.ok()).toBeTruthy();
-  return {
-    Authorization: `Bearer ${(await r.json()).token}`,
-    'Idempotency-Key': crypto.randomUUID(),
-  };
-}
-async function login(page: Page, actor: string) {
-  await page.goto('/');
-  if (await page.getByRole('button', { name: '退出登录' }).isVisible())
-    await page.getByRole('button', { name: '退出登录' }).click();
-  await page.getByLabel('开发账号').selectOption(actor);
-  await page.getByLabel('开发登录口令').fill('e2e-only-password');
-  await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.getByRole('button', { name: '退出登录' })).toBeVisible();
-}
-async function approve(request: APIRequestContext, title: string) {
-  const r = await request.post(`${API}/hr/requisitions`, {
-    headers: await headers(request),
-    data: {
-      title,
-      dept: '客服中心',
-      employmentType: '外包',
-      recruitType: '社招',
-      reqType: '新增',
-      headcount: '1',
-      series: '客服',
-      level: 'P3',
-      city: '深圳',
-      reportToId: 'manager',
-      reportTo: '何美玲',
-      expectedOnboard: new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10),
-      salary: '8-12K/月×13',
-      reason: '业务发展',
-      duties: '提供客户服务',
-      requirements: '良好的沟通能力',
-    },
-  });
-  expect(r.status()).toBe(201);
-  let req = await r.json();
-  for (const actor of ['manager', 'director', 'hrbp']) {
-    const response = await request.post(`${API}/hr/requisitions/${req.id}/approve`, {
-      headers: await headers(request, actor),
-      data: { expected_version: req.version, node_id: req.chain[req.currentNode].id },
-    });
-    expect(response.ok()).toBeTruthy();
-    req = await response.json();
-  }
-  return req;
-}
-async function projection(request: APIRequestContext, reqId: string) {
-  return (
-    await request.get(`${API}/hr/requisitions/${reqId}/position`, {
-      headers: await headers(request),
-    })
-  ).json();
-}
-async function ready(request: APIRequestContext, title: string) {
-  const req = await approve(request, title);
-  await expect.poll(async () => (await projection(request, req.id)).status).toBe('generated');
-  return { req, pos: (await projection(request, req.id)).position };
-}
-async function clickAction(page: Page, name: string) {
-  await page.getByRole('button', { name, exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '确认操作', exact: true }).click();
-}
 
 test('审批事件自动生成岗位：需求回链、画像确认门禁、发布暂停恢复关闭', async ({
   page,
@@ -86,9 +16,8 @@ test('审批事件自动生成岗位：需求回链、画像确认门禁、发�
   await link.click();
   const positionUrl = page.url();
   await expect(page.getByRole('heading', { name: `${title} 待发布` })).toBeVisible();
-  await clickAction(page, '发布岗位');
-  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('用人经理确认画像');
-  await page.getByRole('button', { name: '关闭弹窗' }).click();
+  await expect(page.getByRole('button', { name: '发布岗位' })).toBeDisabled();
+  await expect(page.getByText('发布前请先由用人经理确认画像。')).toBeVisible();
   await page.getByRole('button', { name: '编辑画像与 JD' }).click();
   await page.getByLabel('必备条件', { exact: true }).fill('有客户服务经验，善于沟通');
   await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();

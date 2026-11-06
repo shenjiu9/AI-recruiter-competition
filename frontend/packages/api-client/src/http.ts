@@ -14,9 +14,13 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
-  positionPage: (page, status) => ({
+  positionPage: (page, status, filters = {}) => ({
     method: 'GET',
-    path: `/hr/positions?page=${page}&size=20${status ? `&status=${enc(status)}` : ''}`,
+    path: `/hr/positions?page=${page}&size=20${status ? `&status=${enc(status)}` : ''}&${new URLSearchParams(filters)}`,
+  }),
+  positionKnowledgePreview: (id, asked) => ({
+    method: 'GET',
+    path: `/hr/positions/${enc(id)}/knowledge-preview?asked=${asked}`,
   }),
   positionDetail: (id) => ({ method: 'GET', path: `/hr/positions/${enc(id)}` }),
   positionCommand: (id, body, opts) => ({

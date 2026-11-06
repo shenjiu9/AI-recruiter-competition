@@ -1,7 +1,11 @@
+from copy import deepcopy
+from datetime import datetime
 from hashlib import sha256
 from typing import Protocol
 
 from app.kernel.types import Ctx, DomainError, Principal, new_id
+from app.modules.position.calendar import WorkCalendar
+from app.modules.position.content import PositionContent, normalize
 
 READ_ROLES = {"recruiter", "recruiting_lead", "hrbp", "hiring_manager", "hrd", "headcount_owner"}
 HR_ROLES = {"recruiter", "recruiting_lead", "hrbp"}
@@ -10,10 +14,12 @@ HR_ROLES = {"recruiter", "recruiting_lead", "hrbp"}
 class Requisitions(Protocol):
     def get(self, ctx, req_id): ...
     def approved_snapshot(self, req_id, version): ...
+    def set_position_readers(self, req_id, user_ids): ...
 
 
-class PositionFacade:
-    def __init__(self, store, requisitions: Requisitions, org, clock, journal):
+class PositionFacade(PositionContent):
+    def __init__(self, store, requisitions: Requisitions, org, clock, journal, calendar=None):
+        self.calendar = calendar or WorkCalendar()
         self.store, self.requisitions, self.org, self.clock, self.journal = (
             store,
             requisitions,
@@ -25,7 +31,14 @@ class PositionFacade:
     def _visible(self, ctx, pos):
         p = ctx.principal
         return bool(READ_ROLES.intersection(p.roles)) and (
-            (p.user_id in pos["access"] or p.user_id == pos["owner_id"])
+            (
+                p.user_id in pos["access"]
+                or (
+                    pos["dept"] in p.departments
+                    and bool(HR_ROLES.intersection(p.roles))
+                    and (p.user_id == pos["owner_id"] or p.user_id in pos.get("shared_ids", []))
+                )
+            )
             or (
                 not pos["confidential"]
                 and pos["dept"] in p.departments
@@ -37,14 +50,18 @@ class PositionFacade:
         pos = self.store.get(pos_id)
         if not pos or not self._visible(ctx, pos):
             raise DomainError("NOT_FOUND", "岗位不存在或不在可见范围内", 404)
-        return pos
+        return normalize(pos)
 
     def _editor(self, ctx, pos):
         p = ctx.principal
         return (
             pos["dept"] in p.departments
             and bool(HR_ROLES.intersection(p.roles))
-            and (p.user_id == pos["owner_id"] or "recruiting_lead" in p.roles)
+            and (
+                p.user_id == pos["owner_id"]
+                or p.user_id in pos.get("shared_ids", [])
+                or "recruiting_lead" in p.roles
+            )
         )
 
     def _manager(self, ctx, pos):
@@ -59,6 +76,7 @@ class PositionFacade:
         return identity["name"] if identity else (uid or "待指定")
 
     def dto(self, ctx, pos):
+        normalize(pos)
         return {
             "id": pos["id"],
             "version": pos["version"],
@@ -77,6 +95,22 @@ class PositionFacade:
             "confidential": pos["confidential"],
             "requisitionIds": [s["id"] for s in pos["sources"]],
             "profile": pos["profile"],
+            "activeProfile": pos["active_profile"],
+            "profiles": pos["profiles"],
+            "jd": pos["jd"],
+            "jdVersions": pos["jd_versions"],
+            "activeJd": pos["active_jd"],
+            "jdApprovalRequired": pos["jd_approval_required"],
+            "knowledge": pos["knowledge"],
+            "sharedIds": pos["shared_ids"],
+            "sharedMembers": [{"id": uid, "name": self._name(uid)} for uid in pos["shared_ids"]],
+            "comments": [{**c, "authorName": self._name(c["author"])} for c in pos["comments"]],
+            "closeRequest": pos["close_request"],
+            "interviewPlans": pos["interview_plans"],
+            "canLead": self._lead(ctx, pos),
+            "canCollaborate": self._editor(ctx, pos) or self._manager(ctx, pos),
+            "canShare": self._lead(ctx, pos) or ctx.principal.user_id == pos["owner_id"],
+            "canApproveJd": self._lead(ctx, pos) and ctx.principal.user_id != pos["jd"]["author"],
             "history": [
                 {
                     **h,
@@ -95,11 +129,24 @@ class PositionFacade:
     def get(self, ctx, pos_id):
         return self.dto(ctx, self._get(ctx, pos_id))
 
-    def search(self, ctx, page, size, status=None):
+    def search(
+        self, ctx, page, size, status=None, view="all", query="", dept="", owner="", city=""
+    ):
         rows = [
             p
             for p in self.store.all()
-            if self._visible(ctx, p) and (not status or p["status"] == status)
+            if self._visible(ctx, p)
+            and (not status or p["status"] == status)
+            and (view != "mine" or p["owner_id"] == ctx.principal.user_id)
+            and (
+                view != "participating"
+                or ctx.principal.user_id in p.get("shared_ids", [])
+                or p["manager_id"] == ctx.principal.user_id
+            )
+            and (not query or query.casefold() in p["fields"]["title"].casefold())
+            and (not dept or p["dept"] == dept)
+            and (not owner or p["owner_id"] == owner)
+            and (not city or p["fields"]["city"] == city)
         ]
         return {
             "items": [self.dto(ctx, p) for p in rows[(page - 1) * size : page * size]],
@@ -150,6 +197,7 @@ class PositionFacade:
             "position_id": None,
             "at": self.clock.now().isoformat(),
         }
+        task["due_at"] = self.calendar.deadline(task["at"]).isoformat()
         self.store.save_generation(task)
         if not self._candidates(source):
             ctx = Ctx(Principal("system:position", "岗位事件处理", (), ()), event.trace_id)
@@ -188,6 +236,7 @@ class PositionFacade:
             "version": task["version"],
             "position": None,
             "canResolve": allowed,
+            "dueAt": task.get("due_at", self.calendar.deadline(task["at"]).isoformat()),
             "candidates": [
                 {"id": pos["id"], "name": pos["fields"]["title"]}
                 for pos in self._candidates(source)
@@ -209,6 +258,22 @@ class PositionFacade:
             raise DomainError("POSITION_MERGE_INVALID", "目标岗位不可合并，请刷新后核对")
         self._generate(ctx, task, command.target_id)
         return self.generation(ctx, req_id)
+
+    def expire_generations(self):
+        self.org.lock_configuration()
+        count = 0
+        for task in self.store.pending_generations():
+            due = (
+                datetime.fromisoformat(task["due_at"])
+                if task.get("due_at")
+                else self.calendar.deadline(task["at"])
+            )
+            if due > self.clock.now():
+                continue
+            ctx = Ctx(Principal("system:position-timeout", "岗位生成超时", (), ()), new_id("TRACE"))
+            self._generate(ctx, task, None)
+            count += 1
+        return count
 
     def _generate(self, ctx, task, target_id):
         source = task["source"]
@@ -267,6 +332,7 @@ class PositionFacade:
             }
         )
         self.store.save(pos, old)
+        self._sync_source_readers(pos)
         previous = task["version"]
         task.update(position_id=pos["id"], version=previous + 1)
         self.store.save_generation(task, previous)
@@ -291,34 +357,38 @@ class PositionFacade:
             if action == "confirm_profile"
             else (editor or manager if action == "assign" else editor)
         )
-        if not allowed:
+        extended = action not in {
+            "assign",
+            "save_profile",
+            "confirm_profile",
+            "publish",
+            "pause",
+            "resume",
+            "close",
+        }
+        if not extended and not allowed:
             raise DomainError("FORBIDDEN", "当前角色不能执行此岗位操作", 403)
         if pos["status"] == "closed":
             raise DomainError("INVALID_TRANSITION", "已关闭岗位只读", 409)
         before = {"version": pos["version"], "status": pos["status"]}
-        if action == "assign":
+        if extended:
+            self.content_action(ctx, pos, command)
+        elif action == "assign":
+            if (
+                not self._lead(ctx, pos)
+                and not manager
+                and ctx.principal.user_id != pos["owner_id"]
+            ):
+                raise DomainError("FORBIDDEN", "仅负责人、用人经理或招聘负责人可转交岗位", 403)
             user = self.org.get_user(command.owner_id)
             if not HR_ROLES.intersection(user.roles) or pos["dept"] not in user.departments:
                 raise DomainError("POSITION_OWNER_INVALID", "负责 HR 须在职且具备本部门招聘权限")
             pos["owner_id"] = user.id
+            pos["shared_ids"] = [uid for uid in pos["shared_ids"] if uid != user.id]
         elif action == "save_profile":
-            if pos["status"] != "to_publish":
-                raise DomainError("INVALID_TRANSITION", "本批仅支持发布前编辑画像", 409)
-            if not command.must.strip() or not command.jd.strip():
-                raise DomainError("PROFILE_REQUIRED", "必备条件与 JD 职责不能为空")
-            pos["profile"] = {
-                "version": pos["profile"]["version"] + 1,
-                "must": command.must.strip(),
-                "plus": command.plus.strip(),
-                "redflag": command.redflag.strip(),
-                "jd": command.jd.strip(),
-                "confirmedBy": None,
-                "source": "manual",
-            }
+            self._save_profile(ctx, pos, command)
         elif action == "confirm_profile":
-            if pos["status"] != "to_publish" or pos["profile"]["confirmedBy"]:
-                raise DomainError("INVALID_TRANSITION", "当前画像不能重复确认", 409)
-            pos["profile"]["confirmedBy"] = ctx.principal.user_id
+            self._confirm_profile(ctx, pos)
         else:
             transitions = {
                 "publish": ("to_publish", "open"),
@@ -327,26 +397,14 @@ class PositionFacade:
             }
             if action == "close":
                 if "recruiting_lead" not in ctx.principal.roles:
-                    raise DomainError(
-                        "FORBIDDEN", "本批关闭由招聘负责人执行；HR 申请经理确认后续接入", 403
-                    )
-                if pos["status"] not in {"open", "paused"} or command.reason not in {
-                    "招满",
-                    "需求取消",
-                    "组织调整",
-                    "其他",
-                }:
-                    raise DomainError(
-                        "POSITION_CLOSE_INVALID", "只能关闭招聘中或已暂停岗位，且须选择关闭原因"
-                    )
-                for source in sorted(pos["sources"], key=lambda s: s["id"]):
-                    self.org.release_headcount(ctx, source["id"])
-                pos["status"] = "closed"
+                    raise DomainError("FORBIDDEN", "普通 HR 请提交关闭申请，由用人经理确认", 403)
+                self._close(ctx, pos, command.reason)
             else:
                 previous, next_status = transitions[action]
                 if pos["status"] != previous:
                     raise DomainError("INVALID_TRANSITION", "岗位状态不支持该操作", 409)
                 if action == "publish":
+                    self._jd_ready(pos)
                     if not pos["profile"]["confirmedBy"] or not pos["owner_id"]:
                         raise DomainError(
                             "POSITION_NOT_READY", "请先指定负责 HR 并由用人经理确认画像"
@@ -376,6 +434,7 @@ class PositionFacade:
                         )
                     ):
                         raise DomainError("POSITION_JD_INVALID", "请修改画像或 JD 中的歧视性表述")
+                    pos["active_jd"] = deepcopy(pos["jd"])
                 if action == "pause" and not command.reason.strip():
                     raise DomainError("POSITION_REASON_REQUIRED", "暂停原因不能为空")
                 pos["status"] = next_status
@@ -391,15 +450,26 @@ class PositionFacade:
                 if action in {"save_profile", "confirm_profile"}
                 else None,
                 "owner_id": pos["owner_id"] if action == "assign" else None,
+                "shared_ids": pos["shared_ids"] if action == "share" else None,
+                "jd_approval_required": pos["jd_approval_required"]
+                if action == "configure_publish"
+                else None,
+                "close_reason": pos.get("closed_reason")
+                if action in {"close", "confirm_close"}
+                else None,
             }
         )
         self.store.save(pos, before["version"])
+        if action in {"assign", "share"}:
+            self._sync_source_readers(pos)
         event = {
             "publish": "published",
             "pause": "paused",
             "resume": "resumed",
             "close": "closed",
+            "confirm_close": "closed",
             "confirm_profile": "profile_confirmed",
+            "amend_confirm_profile": "profile_confirmed",
         }.get(action, action)
         self.journal.record(
             ctx,
@@ -409,7 +479,29 @@ class PositionFacade:
             before,
             {"status": pos["status"], "version": pos["version"]},
         )
+        if action in {"save_kb", "retire_kb"}:
+            self.journal.record(
+                ctx, "kb.changed", pos_id, pos["version"], None, {"version": pos["version"]}
+            )
         return self.dto(ctx, pos)
+
+    def _sync_source_readers(self, pos):
+        members = {*pos.get("shared_ids", [])}
+        if pos["owner_id"]:
+            members.add(pos["owner_id"])
+        for source in pos["sources"]:
+            self.requisitions.set_position_readers(source["id"], members)
+
+    def authorize_write(self, ctx, pos_id):
+        self._lock_actor(ctx)
+        self._get(ctx, pos_id)
+
+    def sync_source_access(self):
+        self.org.lock_configuration()
+        positions = self.store.all()
+        for pos in positions:
+            self._sync_source_readers(pos)
+        return len(positions)
 
     def _lock_actor(self, ctx):
         self.org.lock_configuration()

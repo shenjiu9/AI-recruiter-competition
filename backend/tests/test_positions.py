@@ -350,8 +350,8 @@ def test_position_filter_pagination_and_profile_validation(client, login, fields
     assert result["total"] == 2 and len(result["items"]) == 1
     assert client.get(POS, headers=login(), params={"status": "closed"}).json()["total"] == 0
     assert client.get(POS, headers=login(), params={"size": 101}).status_code == 400
-    pos = act(
+    rejected = act(
         client, login, pos, "save_profile", must="沟通能力", plus="男性优先", jd="咨询服务"
-    ).json()
-    pos = act(client, login, pos, "confirm_profile", "manager").json()
-    assert act(client, login, pos, "publish").json()["error"]["code"] == "POSITION_JD_INVALID"
+    )
+    assert rejected.json()["error"]["code"] == "POSITION_JD_INVALID"
+    assert client.get(f"{POS}/{pos['id']}", headers=login()).json()["version"] == pos["version"]

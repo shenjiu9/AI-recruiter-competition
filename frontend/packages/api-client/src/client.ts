@@ -206,7 +206,15 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
-  positionPage(page: number, status?: string): Promise<{ items: LivePosition[]; total: number }>;
+  positionPage(
+    page: number,
+    status?: string,
+    filters?: Record<string, string>,
+  ): Promise<{ items: LivePosition[]; total: number }>;
+  positionKnowledgePreview(
+    id: string,
+    asked: boolean,
+  ): Promise<{ entries: KnowledgeEntry[]; needsHuman: boolean }>;
   positionDetail(id: string): Promise<LivePosition>;
   positionCommand(id: string, command: PositionCommand, opts: WriteOpts): Promise<LivePosition>;
   positionGeneration(reqId: string): Promise<PositionGeneration>;
@@ -437,15 +445,30 @@ export interface LivePosition {
   expectedOnboard: string;
   confidential: boolean;
   requisitionIds: string[];
-  profile: {
-    version: number;
-    must: string;
-    plus: string;
-    redflag: string;
-    jd: string;
-    confirmedBy: string | null;
-    source: string;
-  };
+  profile: PositionProfile;
+  activeProfile: PositionProfile | null;
+  profiles: PositionProfile[];
+  jd: PositionJd;
+  jdVersions: PositionJd[];
+  activeJd: PositionJd | null;
+  jdApprovalRequired: boolean;
+  knowledge: KnowledgeEntry[];
+  sharedIds: string[];
+  sharedMembers: { id: string; name: string }[];
+  comments: {
+    id: string;
+    author: string;
+    authorName: string;
+    content: string;
+    mentions: string[];
+    at: string;
+  }[];
+  closeRequest: { requester: string; reason: string; at: string } | null;
+  interviewPlans: { version: number; rounds: PositionInterviewRound[]; at: string }[];
+  canLead: boolean;
+  canCollaborate: boolean;
+  canShare: boolean;
+  canApproveJd: boolean;
   history: {
     action: string;
     actor: string;
@@ -461,7 +484,28 @@ export interface LivePosition {
 }
 export interface PositionCommand {
   expected_version: number;
-  action: 'assign' | 'save_profile' | 'confirm_profile' | 'publish' | 'pause' | 'resume' | 'close';
+  action:
+    | 'assign'
+    | 'save_profile'
+    | 'confirm_profile'
+    | 'publish'
+    | 'pause'
+    | 'resume'
+    | 'close'
+    | 'save_jd'
+    | 'approve_jd'
+    | 'reject_jd'
+    | 'apply_jd'
+    | 'configure_publish'
+    | 'save_kb'
+    | 'retire_kb'
+    | 'share'
+    | 'comment'
+    | 'request_close'
+    | 'confirm_close'
+    | 'reject_close'
+    | 'save_interview_plan'
+    | 'amend_confirm_profile';
   reason?: string;
   handling?: 'continue' | 'freeze';
   owner_id?: string;
@@ -469,6 +513,16 @@ export interface PositionCommand {
   plus?: string;
   redflag?: string;
   jd?: string;
+  must_ask?: string;
+  plus_weights?: ('high' | 'medium' | 'low')[];
+  jd_approval_required?: boolean;
+  entry_id?: string;
+  content?: string;
+  source?: string;
+  disclosure?: KnowledgeEntry['disclosure'];
+  shared_ids?: string[];
+  mentions?: string[];
+  rounds?: PositionInterviewRound[];
 }
 export interface PositionGeneration {
   status: 'pending' | 'decision' | 'generated';
@@ -476,4 +530,43 @@ export interface PositionGeneration {
   position: { id: string; name: string; status: LivePosition['status'] } | null;
   candidates: { id: string; name: string }[];
   canResolve: boolean;
+  dueAt?: string;
+}
+
+export interface PositionProfile {
+  version: number;
+  must: string;
+  plus: string;
+  redflag: string;
+  must_ask: string;
+  plus_weights: ('high' | 'medium' | 'low')[];
+  jd: string;
+  confirmedBy: string | null;
+  source: string;
+}
+export interface PositionJd {
+  version: number;
+  content: string;
+  author: string | null;
+  approvedBy: string | null;
+  status: 'draft' | 'approved' | 'rejected';
+  reason?: string;
+}
+export interface KnowledgeEntry {
+  id: string;
+  version: number;
+  previous_id: string | null;
+  content: string;
+  source: string;
+  disclosure: 'proactive' | 'asked' | 'internal' | 'handoff';
+  active: boolean;
+}
+export interface PositionInterviewRound {
+  name: string;
+  format: 'video' | 'onsite' | 'phone' | 'ai';
+  duration: 15 | 30 | 45 | 60 | 90;
+  interviewers: string[];
+  rule: 'unanimous' | 'majority' | 'designated';
+  decision_by?: string | null;
+  criteria: string;
 }
