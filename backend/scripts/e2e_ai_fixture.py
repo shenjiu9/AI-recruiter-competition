@@ -3,7 +3,8 @@
 
 class BrowserAiGateway:
     def configured(self, component):
-        return True
+        # No A0 router here: natural-language commands use the keyword rules.
+        return component != "A0"
 
     def call(self, component, inputs, action_id, sample=0, retry_reason=None):
         if component == "A3":

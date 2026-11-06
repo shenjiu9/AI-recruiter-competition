@@ -17,7 +17,7 @@ import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
 import { SalarySettingsPage } from '../pages/SalarySettingsPage';
 import { OrganizationSettingsPage } from '../pages/OrganizationSettingsPage';
 import { HiringPage } from '../pages/HiringPage';
-import { AiJobs } from '@recruiter/ui-kit/ai-jobs';
+import { AiJobsPage } from '../pages/AiJobsPage';
 
 export const router = createBrowserRouter([
   {
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'workbench', element: <WorkbenchPage /> },
-      { path: 'ai-jobs', element: <AiJobs /> },
+      { path: 'ai-jobs', element: <AiJobsPage /> },
       { path: 'hiring', element: <HiringPage /> },
       { path: 'hiring/:id', element: <HiringPage /> },
       { path: 'requisitions', element: <RequisitionListPage /> },

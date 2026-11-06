@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useApi, useReliableWrite, type AiJob } from '@recruiter/api-client';
+import { useEffect, useRef, useState } from 'react';
+import { useApi, useReliableWrite, type AiIntent, type AiJob } from '@recruiter/api-client';
 import { useLiveData } from './LiveHiring';
 
 const names: Record<string, string> = {
@@ -353,7 +353,138 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
   );
 }
 
-export function AiJobs({ business = false }: { business?: boolean }) {
+const EXAMPLES = ['白班客服还差几个人', '评估一下张三是否符合客服专员', '帮客服专员写一版 JD'];
+
+/** 一句话让 AI 做事：后端识别任务和对象；对象唯一时直接开始，否则给出可选项。 */
+function AskPanel({ initial, onStarted }: { initial?: string; onStarted: (job: AiJob) => void }) {
+  const api = useApi();
+  const [text, setText] = useState(initial ?? '');
+  const [result, setResult] = useState<AiIntent>();
+  const ask = useReliableWrite(
+    (body: { text: string }, opts) => api.askAi(body, opts),
+    (r) => {
+      setResult(r);
+      if (r.job) onStarted(r.job);
+    },
+  );
+  const pick = useReliableWrite(
+    (body: { component: string; object_id: string; prompt: string; label: string }, opts) =>
+      api.startAiJob(
+        { component: body.component, object_id: body.object_id, prompt: body.prompt },
+        opts,
+      ),
+    (job) => {
+      setResult((r) =>
+        r
+          ? {
+              ...r,
+              status: 'started',
+              options: [],
+              message: `已开始“${names[job.component]}”。结果生成后请核对原文证据再确认。`,
+            }
+          : r,
+      );
+      onStarted(job);
+    },
+  );
+  const fired = useRef(false);
+  useEffect(() => {
+    if (initial?.trim() && !fired.current) {
+      fired.current = true;
+      void ask.submit({ text: initial.trim() });
+    }
+    // 只在打开时执行一次从指令栏带来的指令
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const busy = ask.locked || pick.locked;
+  const examples = result?.examples.length ? result.examples : EXAMPLES;
+  return (
+    <form
+      style={{ ...box, borderColor: '#b9c8f5' }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (text.trim()) {
+          setResult(undefined);
+          void ask.submit({ text: text.trim() });
+        }
+      }}
+    >
+      <label>
+        <strong>用一句话让 AI 做事</strong>
+        <textarea
+          style={input}
+          rows={2}
+          maxLength={4000}
+          value={text}
+          disabled={busy}
+          placeholder="比如：白班客服还差几个人？/ 评估一下张三 / 帮客服专员写一版 JD"
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
+      </label>
+      <button disabled={busy || !text.trim()}>{ask.busy ? 'AI 正在理解…' : '交给 AI'}</button>
+      {(!result || result.status === 'unsupported') && (
+        <p style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          可以这样说：
+          {examples.map((x) => (
+            <button key={x} type="button" disabled={busy} onClick={() => setText(x)}>
+              {x}
+            </button>
+          ))}
+        </p>
+      )}
+      {result && (
+        <div role="status" aria-live="polite" style={{ marginTop: 12 }}>
+          {result.component && (
+            <p>
+              识别为：<strong>{result.component_name}</strong>
+              {result.router === 'rules' ? '（按关键词识别）' : ''}
+            </p>
+          )}
+          <p>{result.message}</p>
+          {result.status === 'choose' && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {result.options.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void pick.submit({
+                      component: result.component ?? '',
+                      object_id: o.id,
+                      prompt: result.prompt,
+                      label: o.label,
+                    })
+                  }
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {(ask.error || pick.error) && <p role="alert">{ask.error || pick.error}</p>}
+      {(ask.retry || pick.retry) && (
+        <button
+          type="button"
+          onClick={ask.retry ? ask.retryAction : pick.retryAction}
+          disabled={ask.busy || pick.busy}
+        >
+          重试同一次提交
+        </button>
+      )}
+    </form>
+  );
+}
+
+export function AiJobs({ business = false, ask }: { business?: boolean; ask?: string }) {
   const api = useApi();
   const query = new URLSearchParams(window.location.search);
   const [component, setComponent] = useState(business ? 'A6' : (query.get('component') ?? 'A3'));
@@ -390,57 +521,71 @@ export function AiJobs({ business = false }: { business?: boolean }) {
           {!health.data.worker_enabled && '后台自动执行未开启。'}
         </p>
       )}
-      <form
-        style={box}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void start.submit({ component, object_id: objectId, prompt });
-        }}
-      >
-        <label>
-          任务类型
-          <select
-            style={input}
-            value={component}
-            disabled={start.locked || business}
-            onChange={(e) => {
-              setComponent(e.target.value);
-              setObjectId('');
-            }}
-          >
-            {Object.entries(names).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <TargetPicker
-          key={component}
-          component={component}
-          value={objectId}
-          change={setObjectId}
-          disabled={start.locked}
+      {!business && (
+        <AskPanel
+          initial={ask}
+          onStarted={(job) => {
+            setSelected(job.id);
+            void jobs.refresh();
+          }}
         />
-        <label>
-          {component === 'A6' ? '已获授权的面试原始记录' : '补充说明（可选）'}
-          <textarea
-            style={input}
-            value={prompt}
-            maxLength={8000}
-            rows={4}
-            disabled={start.locked}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-        </label>
-        <button disabled={start.locked || !configured || !objectId.trim()}>创建 AI 任务</button>
-        {start.error && <p role="alert">{start.error}</p>}
-        {start.retry && (
-          <button type="button" onClick={start.retryAction} disabled={start.busy}>
-            重试同一次提交
-          </button>
+      )}
+      <details open={business || !!query.get('object')} style={{ marginBlock: 16 }}>
+        {!business && (
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>或手动选择任务和对象</summary>
         )}
-      </form>
+        <form
+          style={box}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void start.submit({ component, object_id: objectId, prompt });
+          }}
+        >
+          <label>
+            任务类型
+            <select
+              style={input}
+              value={component}
+              disabled={start.locked || business}
+              onChange={(e) => {
+                setComponent(e.target.value);
+                setObjectId('');
+              }}
+            >
+              {Object.entries(names).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <TargetPicker
+            key={component}
+            component={component}
+            value={objectId}
+            change={setObjectId}
+            disabled={start.locked}
+          />
+          <label>
+            {component === 'A6' ? '已获授权的面试原始记录' : '补充说明（可选）'}
+            <textarea
+              style={input}
+              value={prompt}
+              maxLength={8000}
+              rows={4}
+              disabled={start.locked}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+          </label>
+          <button disabled={start.locked || !configured || !objectId.trim()}>创建 AI 任务</button>
+          {start.error && <p role="alert">{start.error}</p>}
+          {start.retry && (
+            <button type="button" onClick={start.retryAction} disabled={start.busy}>
+              重试同一次提交
+            </button>
+          )}
+        </form>
+      </details>
       {detail.error && <p role="alert">{detail.error}</p>}
       {detail.data && (
         <Review

@@ -15,6 +15,22 @@ class StartJob(StrictModel):
     prompt: str = Field(default="", max_length=8000)
 
 
+class Ask(StrictModel):
+    """One natural-language instruction typed by an HR into the AI command bar."""
+
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class Route(StrictModel):
+    """Router (A0) output: which task the sentence asks for and the verbatim mentions."""
+
+    component: Literal["A1", "A2", "A3", "A4", "A5", "A6", "A7", "none"]
+    position: str = Field(default="", max_length=200)
+    candidate: str = Field(default="", max_length=200)
+    transcript: str = Field(default="", max_length=8000)
+    reason: str = Field(default="", max_length=500)
+
+
 class JobCommand(StrictModel):
     expected_version: int = Field(ge=1)
     action: Literal["approve", "reject", "cancel", "retry"]

@@ -225,6 +225,27 @@ class CandidateFacade:
             )
         return value
 
+    def directory(self, ctx):
+        """Names of the canonical candidates this HR may see, for resolving mentions."""
+        self.require_hr(ctx)
+        rows = []
+        for c in self.store.all():
+            if c.get("merged_into"):
+                continue
+            try:
+                self._get(ctx, c["id"])
+            except DomainError:
+                continue
+            rows.append(
+                {
+                    "id": c["id"],
+                    "name": c["profile"]["name"],
+                    "usable": c["consent"] == "granted" and not c["do_not_contact"],
+                    "created_at": c["created_at"],
+                }
+            )
+        return sorted(rows, key=lambda c: (c["created_at"], c["id"]), reverse=True)
+
     def search(self, ctx, page, size, query="", state="", city="", source=""):
         rows = []
         for c in self.store.all():

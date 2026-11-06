@@ -58,6 +58,7 @@ export function createMockClient(): ApiClient {
     aiJob: backendOnly,
     startAiJob: backendOnly,
     aiJobCommand: backendOnly,
+    askAi: backendOnly,
     candidatePage: backendOnly,
     liveInterviews: backendOnly,
     liveHires: backendOnly,
