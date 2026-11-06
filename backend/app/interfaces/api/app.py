@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -12,12 +14,40 @@ from starlette.exceptions import HTTPException
 from app.interfaces.api.auth import router as auth_router
 from app.interfaces.api.org import router as org_router
 from app.interfaces.api.organization import router as organization_router
+from app.interfaces.api.position import router as pos_router
 from app.interfaces.api.requisition import router as req_router
 from app.kernel.types import DomainError
 
 
 def create_api(container):
-    app = FastAPI(title="AI 招聘系统比赛版", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app):
+        from app.position_worker import run_once
+
+        stop = asyncio.Event()
+
+        async def work():
+            while not stop.is_set():
+                try:
+                    await asyncio.to_thread(run_once, container)
+                except Exception as exc:
+                    logging.getLogger("recruiter").warning(
+                        "position_worker_unavailable type=%s", type(exc).__name__
+                    )
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=2)
+                except TimeoutError:
+                    pass
+
+        task = asyncio.create_task(work()) if container.settings.position_worker_enabled else None
+        try:
+            yield
+        finally:
+            stop.set()
+            if task:
+                await task
+
+    app = FastAPI(title="AI 招聘系统比赛版", version="0.1.0", lifespan=lifespan)
     app.state.container = container
     app.add_middleware(
         CORSMiddleware,
@@ -97,4 +127,5 @@ def create_api(container):
     app.include_router(org_router)
     app.include_router(organization_router)
     app.include_router(req_router)
+    app.include_router(pos_router)
     return app

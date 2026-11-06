@@ -1,8 +1,31 @@
 import { Table } from 'antd';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '@recruiter/api-client';
+import { POSITION_STATUS_LABEL } from '@recruiter/domain';
 import { REQ_STATUS_LABEL, REQ_TYPE_LABEL, formatDate, type Requisition } from '@recruiter/domain';
 
 const MODE = { self: '本人发起', proxy: '代发起', ai_draft: 'AI 起草' } as const;
+
+function GeneratedPosition({ reqId }: { reqId: string }) {
+  const api = useApi();
+  const query = useQuery({
+    queryKey: ['position-generation', reqId],
+    queryFn: () => api.positionGeneration(reqId),
+    refetchInterval: 5000,
+  });
+  if (query.isError) return <Link to={`/requisitions/${reqId}`}>查看生成状态</Link>;
+  const pos = query.data?.position;
+  return pos ? (
+    <Link to={`/positions/${pos.id}`}>
+      {pos.name} · {POSITION_STATUS_LABEL[pos.status]}
+    </Link>
+  ) : (
+    <Link to={`/requisitions/${reqId}`}>
+      {query.data?.status === 'decision' ? '待选择合并 / 新建' : '生成处理中'}
+    </Link>
+  );
+}
 
 function waiting(r: Requisition) {
   if (r.status === 'in_approval')
@@ -71,7 +94,11 @@ export function RequisitionTable({
         {
           title: '生成的岗位',
           render: (_, r) =>
-            r.positionId ? <Link to={`/positions/${r.positionId}`}>{r.title}</Link> : null,
+            import.meta.env.VITE_USE_MOCK === 'false' && r.status === 'approved' ? (
+              <GeneratedPosition reqId={r.id} />
+            ) : r.positionId ? (
+              <Link to={`/positions/${r.positionId}`}>{r.title}</Link>
+            ) : null,
         },
         {
           title: '提交时间',

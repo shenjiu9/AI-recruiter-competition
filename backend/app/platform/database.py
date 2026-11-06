@@ -2,7 +2,7 @@ from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-SCHEMAS = ("platform", "org", "req")
+SCHEMAS = ("platform", "org", "req", "pos")
 
 
 class Base(DeclarativeBase):

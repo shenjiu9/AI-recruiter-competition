@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     encryption_key: str
     dev_auth_enabled: bool = False
     dev_login_password: str = ""
+    position_worker_enabled: bool = True
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:5174",

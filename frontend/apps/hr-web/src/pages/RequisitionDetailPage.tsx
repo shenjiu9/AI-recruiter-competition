@@ -9,6 +9,7 @@ import { ManagerConfirmation } from '../features/requisition/ui/ManagerConfirmat
 import { REQ_STATUS_LABEL } from '@recruiter/domain';
 import { useRequisitionAction, useRequisitionDetail } from '../features/requisition';
 import { PageHeader } from '../shared/PageHeader';
+import { PositionGenerationPanel } from '../features/position';
 
 export function RequisitionDetailPage() {
   const { id = '' } = useParams();
@@ -73,7 +74,7 @@ export function RequisitionDetailPage() {
           style={{ marginBottom: 20 }}
           type="success"
           message="需求审批已通过"
-          description="岗位尚未生成，请在岗位创建完成后继续招聘。"
+          description={<PositionGenerationPanel reqId={req.id} />}
         />
       )}
       {req.status === 'in_approval' && req.chain[req.currentNode]?.id === 'hc_final' && (

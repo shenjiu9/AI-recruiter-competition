@@ -26,6 +26,7 @@ def container(tmp_path):
         encryption_key=base64.urlsafe_b64encode(b"e" * 32).decode(),
         dev_auth_enabled=True,
         dev_login_password="test-password",
+        position_worker_enabled=False,
     )
     container = build_container(settings)
     if postgres_url:

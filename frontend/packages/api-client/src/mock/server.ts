@@ -53,6 +53,11 @@ export function createMockClient(): ApiClient {
     throw new AppError('BACKEND_REQUIRED', '此操作需要切换到真实 API 模式', 501);
   };
   return {
+    positionPage: backendOnly,
+    positionDetail: backendOnly,
+    positionCommand: backendOnly,
+    positionGeneration: backendOnly,
+    resolvePositionGeneration: backendOnly,
     formDepartments: backendOnly,
     formUsers: backendOnly,
     salaryBands: backendOnly,

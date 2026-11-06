@@ -78,6 +78,6 @@ class SqlJournal:
                     partition_key=object_id,
                     occurred_at=self.clock.now(),
                     trace_id=ctx.trace_id,
-                    payload={"requisition_id": object_id, "version": version},
+                    payload={f"{action.split('.')[0]}_id": object_id, "version": version},
                 )
             )

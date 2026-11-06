@@ -7,6 +7,8 @@ from app.modules.org.adapters.headcount import SqlHeadcount
 from app.modules.org.adapters.repository import SqlDirectory
 from app.modules.org.adapters.salary import SqlSalary
 from app.modules.org.public import OrgFacade
+from app.modules.position.adapters.repository import SqlPositions
+from app.modules.position.public import PositionFacade
 from app.modules.requisition.adapters.repository import SqlRepository
 from app.modules.requisition.adapters.transfers import SqlTransfers
 from app.modules.requisition.public import RequisitionFacade
@@ -14,6 +16,7 @@ from app.platform.auth import Auth
 from app.platform.crypto import Crypto
 from app.platform.database import Database
 from app.platform.idempotency import Idempotency
+from app.platform.inbox import InboxRecord  # noqa: F401 - register migration metadata
 from app.platform.records import SqlJournal
 
 
@@ -35,16 +38,25 @@ class Container:
                 SqlJournal(session, self.clock),
                 SqlConfiguration(session),
             )
+            requisition = RequisitionFacade(
+                SqlRepository(session, self.crypto),
+                org,
+                self.clock,
+                SqlJournal(session, self.clock),
+                SqlTransfers(session),
+            )
             yield SimpleNamespace(
-                org=org,
-                auth=Auth(self.settings, self.clock, org),
-                requisition=RequisitionFacade(
-                    SqlRepository(session, self.crypto),
+                session=session,
+                position=PositionFacade(
+                    SqlPositions(session, self.crypto),
+                    requisition,
                     org,
                     self.clock,
                     SqlJournal(session, self.clock),
-                    SqlTransfers(session),
                 ),
+                org=org,
+                auth=Auth(self.settings, self.clock, org),
+                requisition=requisition,
                 idempotency=Idempotency(session, self.clock, self.crypto),
             )
 

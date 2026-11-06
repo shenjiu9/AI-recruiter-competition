@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Integer, String, select, update
+from sqlalchemy import Boolean, CheckConstraint, Date, Integer, String, delete, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.kernel.types import DomainError
@@ -60,6 +60,29 @@ class SqlHeadcount:
     def get(self, dept, year):
         row = self.session.get(HeadcountRecord, (dept, year), populate_existing=True)
         return dto(row) if row else None
+
+    def release(self, req_id):
+        row = self.session.execute(
+            delete(ReservationRecord)
+            .where(ReservationRecord.requisition_id == req_id)
+            .returning(ReservationRecord.dept, ReservationRecord.year, ReservationRecord.count)
+        ).first()
+        if not row:
+            return 0
+        result = self.session.execute(
+            update(HeadcountRecord)
+            .where(
+                HeadcountRecord.dept == row.dept,
+                HeadcountRecord.year == row.year,
+                HeadcountRecord.reserved >= row.count,
+            )
+            .values(
+                reserved=HeadcountRecord.reserved - row.count, version=HeadcountRecord.version + 1
+            )
+        )
+        if result.rowcount != 1:
+            raise DomainError("HC_RELEASE_INVALID", "编制预占数据不一致，不能关闭岗位", 409)
+        return row.count
 
     def list(self, departments, year):
         return [

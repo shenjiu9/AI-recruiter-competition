@@ -206,6 +206,15 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  positionPage(page: number, status?: string): Promise<{ items: LivePosition[]; total: number }>;
+  positionDetail(id: string): Promise<LivePosition>;
+  positionCommand(id: string, command: PositionCommand, opts: WriteOpts): Promise<LivePosition>;
+  positionGeneration(reqId: string): Promise<PositionGeneration>;
+  resolvePositionGeneration(
+    reqId: string,
+    command: { expected_version: number; target_id?: string },
+    opts: WriteOpts,
+  ): Promise<PositionGeneration>;
   formDepartments(requisitionId?: string): Promise<{ id: string; parent_id: string | null }[]>;
   formUsers(
     dept: string,
@@ -409,4 +418,62 @@ export interface ApiConfig {
   baseUrl: string;
   mock: boolean;
   getToken?: () => string | null;
+}
+
+export interface LivePosition {
+  id: string;
+  version: number;
+  name: string;
+  dept: string;
+  city: string;
+  level: string;
+  status: 'to_publish' | 'open' | 'paused' | 'closed';
+  ownerHr: string;
+  ownerId: string | null;
+  hiringManager: string;
+  managerId: string;
+  planned: number;
+  hired: number;
+  expectedOnboard: string;
+  confidential: boolean;
+  requisitionIds: string[];
+  profile: {
+    version: number;
+    must: string;
+    plus: string;
+    redflag: string;
+    jd: string;
+    confirmedBy: string | null;
+    source: string;
+  };
+  history: {
+    action: string;
+    actor: string;
+    actorName: string;
+    at: string;
+    reason?: string;
+    requisition_id?: string;
+  }[];
+  canEdit: boolean;
+  canConfirm: boolean;
+  canClose: boolean;
+  canAssign: boolean;
+}
+export interface PositionCommand {
+  expected_version: number;
+  action: 'assign' | 'save_profile' | 'confirm_profile' | 'publish' | 'pause' | 'resume' | 'close';
+  reason?: string;
+  handling?: 'continue' | 'freeze';
+  owner_id?: string;
+  must?: string;
+  plus?: string;
+  redflag?: string;
+  jd?: string;
+}
+export interface PositionGeneration {
+  status: 'pending' | 'decision' | 'generated';
+  version: number;
+  position: { id: string; name: string; status: LivePosition['status'] } | null;
+  candidates: { id: string; name: string }[];
+  canResolve: boolean;
 }

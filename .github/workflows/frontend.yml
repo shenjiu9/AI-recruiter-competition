@@ -21,6 +21,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build
+      - run: pnpm build
+        name: Build real API mode
+        env:
+          VITE_USE_MOCK: 'false'
   browser-tests:
     runs-on: ubuntu-latest
     steps:

@@ -14,6 +14,24 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  positionPage: (page, status) => ({
+    method: 'GET',
+    path: `/hr/positions?page=${page}&size=20${status ? `&status=${enc(status)}` : ''}`,
+  }),
+  positionDetail: (id) => ({ method: 'GET', path: `/hr/positions/${enc(id)}` }),
+  positionCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/positions/${enc(id)}/actions`,
+    body,
+    opts,
+  }),
+  positionGeneration: (id) => ({ method: 'GET', path: `/hr/requisitions/${enc(id)}/position` }),
+  resolvePositionGeneration: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/requisitions/${enc(id)}/position`,
+    body,
+    opts,
+  }),
   formDepartments: (id) => ({
     method: 'GET',
     path: `/hr/requisition-form/departments${id ? `?requisition_id=${enc(id)}` : ''}`,
@@ -131,7 +149,7 @@ const routes: Routes = {
     body: { is_key: isKey, expected_version: expectedVersion },
     opts,
   }),
-  listPositions: () => ({ method: 'GET', path: '/hr/positions' }),
+  listPositions: () => ({ method: 'GET', path: '/hr/positions?size=100', unwrapItems: true }),
   getPosition: (id) => ({ method: 'GET', path: `/hr/positions/${enc(id)}` }),
   positionFunnel: (id) => ({ method: 'GET', path: `/hr/positions/${enc(id)}/funnel` }),
   positionApplications: (id) => ({ method: 'GET', path: `/hr/positions/${enc(id)}/applications` }),

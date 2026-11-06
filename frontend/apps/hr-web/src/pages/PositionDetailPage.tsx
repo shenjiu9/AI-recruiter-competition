@@ -13,11 +13,20 @@ import {
   useTransitionPosition,
 } from '../features/position';
 import { PageHeader } from '../shared/PageHeader';
+import { LivePositionDetail } from '../features/position';
 
 const CLOSE_REASONS = ['招满', '需求取消', '组织调整', '其他'];
 
 /** JB-02 岗位详情 */
 export function PositionDetailPage() {
+  return import.meta.env.VITE_USE_MOCK === 'false' ? (
+    <LivePositionDetail />
+  ) : (
+    <MockPositionDetail />
+  );
+}
+
+function MockPositionDetail() {
   usePageView('JB-02');
   const { id = '' } = useParams();
   const d = usePositionDetail(id);

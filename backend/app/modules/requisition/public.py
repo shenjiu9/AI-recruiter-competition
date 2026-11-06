@@ -2,6 +2,14 @@ from app.modules.requisition.application.commands import RequisitionCommands
 
 
 class RequisitionFacade(RequisitionCommands):
+    def approved_snapshot(self, req_id, version):
+        from app.kernel.types import DomainError
+
+        req = self.repo.get(req_id)
+        if not req or req.status != "approved" or req.version != version:
+            raise DomainError("APPROVED_SOURCE_INVALID", "审批事件与已通过需求不一致")
+        return self.dto(req, detail=True)
+
     def get(self, ctx, req_id):
         return self.dto(self.get_entity(ctx, req_id), detail=True)
 
