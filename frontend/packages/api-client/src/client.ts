@@ -11,6 +11,16 @@ export type * from './candidate-contracts';
 import type { LiveInterview, InterviewCommand, InterviewAvailability } from './interview-contracts';
 export type * from './interview-contracts';
 import type {
+  LiveHire,
+  HireCommand,
+  LiveWorkbench,
+  LiveCard,
+  CardCommand,
+  AutomationConfig,
+  AutomationCommand,
+} from './hiring-contracts';
+export type * from './hiring-contracts';
+import type {
   ConversationCommand,
   ConversationResult,
   LiveConversation,
@@ -224,6 +234,17 @@ export interface PortalSession {
 
 /** 前端唯一的数据入口。真实环境走 HTTP，开发和演示走内存 mock，两者实现同一接口。 */
 export interface ApiClient {
+  liveHires(
+    page: number,
+    filters?: Record<string, string>,
+  ): Promise<{ items: LiveHire[]; total: number }>;
+  liveHire(id: string): Promise<LiveHire>;
+  downloadHireHandoff(id: string): Promise<Blob>;
+  hireCommand(id: string, body: HireCommand, opts: WriteOpts): Promise<LiveHire>;
+  liveWorkbench(): Promise<LiveWorkbench>;
+  resolveLiveCard(id: string, body: CardCommand, opts: WriteOpts): Promise<LiveCard>;
+  liveAutomation(filters: Record<string, string>): Promise<AutomationConfig>;
+  saveLiveAutomation(body: AutomationCommand, opts: WriteOpts): Promise<AutomationConfig>;
   liveInterviews(
     page: number,
     filters?: Record<string, string>,

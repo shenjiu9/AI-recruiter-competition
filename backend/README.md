@@ -53,7 +53,7 @@ docker compose --env-file backend/.env -f deploy/compose.yaml --profile demo --p
 docker compose --env-file backend/.env -f deploy/compose.yaml ps
 ```
 
-Compose 包含 PostgreSQL、Redis、一次性迁移、显式演示组织种子、API、HR/业务前端；服务端口只绑定到 `127.0.0.1`。容器强制使用 PostgreSQL，忽略本地 `.env` 中可能配置的 SQLite URL。数据保存于命名卷。Redis 当前仅预留给后续限流/缓存模块。
+Compose 包含 PostgreSQL、Redis、一次性迁移、显式演示组织种子、API、HR／业务／候选人前端；服务端口只绑定到 `127.0.0.1`。容器强制使用 PostgreSQL，忽略本地 `.env` 中可能配置的 SQLite URL。数据保存于命名卷。Redis 当前仅预留给后续限流/缓存模块。
 
 Docker Compose 是本地开发配置，不是生产部署模板；默认本地数据库口令不能用于公开部署。正式环境必须关闭开发登录、配置正式组织/身份来源及独立数据库角色，并接入密钥服务。
 
@@ -74,7 +74,7 @@ $env:PLAYWRIGHT_CHANNEL = 'chrome'
 npx.cmd --yes pnpm@10.28.0 test:e2e
 ```
 
-E2E 启动独立的临时数据库及 8010/5183/5184 端口，不使用本地 `.env` 的业务数据库。未安装 Chrome 时先 `pnpm exec playwright install chromium`，不要设置 `PLAYWRIGHT_CHANNEL`。CI 会自动安装 Chromium。
+E2E 启动独立的临时数据库及 8010/5183/5184/5185 端口，不使用本地 `.env` 的业务数据库。未安装 Chrome 时先 `pnpm exec playwright install chromium`，不要设置 `PLAYWRIGHT_CHANNEL`。CI 会自动安装 Chromium。
 
 PostgreSQL 验证：设置 `DATABASE_URL` 和 `TEST_DATABASE_URL` 为同一个隔离测试库 URL，先 `alembic upgrade head` 再 `pytest -q`。测试库名必须以 `_test` 结尾；测试会清空该库的业务表。GitHub Actions 使用临时 PostgreSQL 16，运行同一套测试及额外的四并发幂等/审计不可变测试，再验证迁移回退、升级、schema 一致性和镜像构建。
 
@@ -91,6 +91,7 @@ PostgreSQL 验证：设置 `DATABASE_URL` 和 `TEST_DATABASE_URL` 为同一个�
 - 预检仅有确定性基础规则；替补/追加关系、相似需求识别和 AI 复核尚未接入；不能当作完整 PRD 验收通过。
 - Dify 未配置时 AI 填表返回 `503 AI_DEGRADED`，不会生成伪造的 AI 结果。
 - 候选人 / 简历 / 应聘核心接口已接通，升级至 `0009`；HR Web 支持上传、解析核对、去重、合并撤销、授权证据、挂人、冷却、阶段操作和删除，业务 H5 查看脱敏资料。原件用数据库加密 BLOB 保存，PDF / DOCX 提取文本；图片、扫描件和旧 Word 待人工补全，尚未接 OCR / S3。详见 `docs/adr/0010-candidates-and-applications.md`。
-- 排期 / 面评、AI 工作台、候选人自助授权链接与对外消息尚未实现；岗位知识维护和面试流程配置已实现，但未接外部渠道、Dify 或 AI 画像。默认 mock 模式可以继续浏览原前端演示。
+- 候选人签名链接、授权和 HR／候选人 H5 双向沟通，以及内部预约／面评流程已实现，详见 ADR 0011／0012；短信、邮件、真实会议／日历适配器和 AI 回复尚未接入。
+- 升级至 `0012` 后，HR Web 和业务 H5 `/hiring` 可处理面评后的经理决定、录用审批、名额占用；HR 登记实际移交并回填结果，支持 Excel 移交单导出。`/workbench` 展示真实权限范围的岗位／卡片／录用数据，自动化设置支持策略及历史恢复。后台同步复用 `CONVERSATION_WORKER_ENABLED` 循环，页面请求也会刷新待办。AI 执行及外部移交仍未配置，详情与边界见 `docs/adr/0013-hiring-decisions-and-automation.md`。默认 mock 模式保留原前端演示。
 - 代理修改确认已交付：HR Web 详情 / 业务 H5 待办的“修改并确认”支持预检、条件加签、字段差异；重提也记录相对上次提交的差异。详情、规则快照和差异加密保存，通用审计仅记录状态 / 版本。旧载荷原样确认兼容，修改须撤回重提。详见 `docs/adr/0004-proxy-confirmation.md`。
 - 已实现岗位专用持久化 inbox / 重试；通用分区 worker、运维看板、过期幂等清理、限流、生产角色隔离与监控仍在后续任务中。

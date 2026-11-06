@@ -103,6 +103,44 @@ class InterviewFacade:
             raise DomainError("NOT_FOUND", "面试不存在或无权查看", 404)
         return iv
 
+    def pending_rejection(self, aid):
+        if any(r["application_id"] == aid and r["status"] in ACTIVE for r in self.store.all()):
+            return []
+        return self.hiring_summary(aid)[-1:]
+
+    def hiring_summary(self, aid):
+        return [
+            {
+                "id": r["id"],
+                "version": r["version"],
+                "round_no": r["round_no"],
+                "round_name": (r["spec"] or {}).get("name", "待配置"),
+                "status": r["status"],
+                "result": r["result"],
+                "feedback": r["feedback"],
+            }
+            for r in sorted(
+                self.store.all(), key=lambda r: (r["created_at"], r["round_no"], r["id"])
+            )
+            if r["application_id"] == aid and r["status"] == "completed"
+        ]
+
+    def extra_round(self, ctx, app, spec):
+        dept = self.positions.interview_state(app["position_id"])["dept"]
+        if spec.format == "ai" or not spec.interviewers or not spec.name or not spec.criteria:
+            raise DomainError("PLAN_REQUIRED", "追加轮次须为完整的人工面试")
+        for uid in spec.interviewers:
+            user = self.org.get_user(uid)
+            if dept not in user.departments or not set(user.roles).intersection(
+                {"interviewer", "hiring_manager", "recruiter", "recruiting_lead"}
+            ):
+                raise DomainError("INTERVIEWER_INVALID", "追加面试官须在职且具备部门权限")
+        if spec.rule == "designated" and spec.decision_by not in spec.interviewers:
+            raise DomainError("DECIDER_INVALID", "决定人须在面试官中")
+        return self.create_round(
+            ctx, app, {"version": 1, "rounds": [spec.model_dump()]}, 0, new_id("CYCLE")
+        )
+
     def authorize(self, ctx, iid, edit=False):
         self.candidates.lock(ctx)
         iv = self.get_record(iid)

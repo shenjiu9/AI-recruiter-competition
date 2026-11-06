@@ -54,4 +54,5 @@ with TemporaryDirectory(prefix="recruiter-e2e-") as directory:
     from e2e_interview_fixture import seed_finished_interview
 
     seed_finished_interview(container)
+    seed_finished_interview(container, for_hiring=True)
     uvicorn.run(create_api(container), host="127.0.0.1", port=8010, log_level="warning")

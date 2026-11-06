@@ -15,9 +15,9 @@ from fastapi.testclient import TestClient
 from app.interfaces.api.app import create_api
 
 
-def seed_finished_interview(container):
+def seed_finished_interview(container, for_hiring=False):
     sys.path.insert(0, str(Path(__file__).parents[1] / "tests"))
-    from test_interviews import action, choose, offer, setup
+    from test_interviews import action, choose, feedback, offer, setup
 
     settings = container.settings
     previous = settings.position_worker_enabled, settings.conversation_worker_enabled
@@ -65,5 +65,9 @@ def seed_finished_interview(container):
                 s.interview.store.release(iv["id"])
                 s.interview.store.save(iv, iv["version"])
             assert action(f, "complete", reason="仅限临时测试库的已结束场次").status_code == 200
+            if for_hiring:
+                assert feedback(f).status_code == 200
+                with container.scope() as s:
+                    s.decision.sync()
     finally:
         settings.position_worker_enabled, settings.conversation_worker_enabled = previous

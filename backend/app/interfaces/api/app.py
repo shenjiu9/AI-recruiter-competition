@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException
 from app.interfaces.api.auth import router as auth_router
 from app.interfaces.api.candidate import router as candidate_router
 from app.interfaces.api.conversation import router as conversation_router
+from app.interfaces.api.hiring import router as hiring_router
 from app.interfaces.api.interview import router as interview_router
 from app.interfaces.api.org import router as org_router
 from app.interfaces.api.organization import router as organization_router
@@ -146,4 +147,5 @@ def create_api(container):
     app.include_router(candidate_router)
     app.include_router(conversation_router)
     app.include_router(interview_router)
+    app.include_router(hiring_router)
     return app

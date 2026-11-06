@@ -61,7 +61,30 @@ class SqlHeadcount:
         row = self.session.get(HeadcountRecord, (dept, year), populate_existing=True)
         return dto(row) if row else None
 
-    def release(self, req_id):
+    def release(self, req_id, retain=0):
+        if retain:
+            row = self.session.scalar(
+                select(ReservationRecord)
+                .where(ReservationRecord.requisition_id == req_id)
+                .with_for_update()
+            )
+            if not row:
+                return 0
+            released = row.count - retain
+            if released < 0:
+                raise DomainError("HC_RELEASE_INVALID", "录用预占与需求账本不一致", 409)
+            if released:
+                self.session.execute(
+                    update(HeadcountRecord)
+                    .where(HeadcountRecord.dept == row.dept, HeadcountRecord.year == row.year)
+                    .values(
+                        reserved=HeadcountRecord.reserved - released,
+                        version=HeadcountRecord.version + 1,
+                    )
+                )
+                row.count = retain
+                self.session.flush()
+            return released
         row = self.session.execute(
             delete(ReservationRecord)
             .where(ReservationRecord.requisition_id == req_id)

@@ -7,9 +7,9 @@ class WorkCalendar:
     def __init__(self, holidays=(), workdays=()):
         self.holidays, self.workdays = set(holidays), set(workdays)
 
-    def deadline(self, timestamp):
+    def deadline(self, timestamp, days=3):
         value = datetime.fromisoformat(timestamp).astimezone(timezone(timedelta(hours=8)))
-        remaining = 3
+        remaining = days
         while remaining:
             value += timedelta(days=1)
             day = value.date()

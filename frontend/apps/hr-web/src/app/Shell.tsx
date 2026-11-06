@@ -49,6 +49,7 @@ export function Shell() {
     { key: '/positions', icon: <SolutionOutlined />, label: '岗位管理' },
     { key: '/candidates', icon: <TeamOutlined />, label: '候选人' },
     { key: '/interviews', icon: <CalendarOutlined />, label: '面试' },
+    { key: '/hiring', icon: <SolutionOutlined />, label: '录用与移交' },
     { key: '/channels', icon: <ShareAltOutlined />, label: '渠道' },
     { key: '/insights', icon: <FundOutlined />, label: '数据洞察' },
   ];

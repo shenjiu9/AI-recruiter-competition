@@ -9,6 +9,7 @@ class ApplicationFacade:
     def __init__(self, store, candidates, positions, clock, journal):
         self.conversations = None
         self.interviews = None
+        self.hiring = None
         self.store, self.candidates, self.positions, self.clock, self.journal = (
             store,
             candidates,
@@ -93,7 +94,7 @@ class ApplicationFacade:
         apps = self.for_candidates(self.candidates.family(c["id"]))
         if any(a["position_id"] == pos["id"] and not a["outcome"] for a in apps):
             raise DomainError("ACTIVE_APPLICATION_EXISTS", "候选人已在本岗位流程中", 409)
-        if any(a["stage"] == "hired" and not a["outcome"] for a in apps):
+        if any(a["stage"] == "hired" and a["outcome"] in {None, "joined"} for a in apps):
             raise DomainError("ALREADY_HIRED", "候选人已录用，请先处理录用结果", 409)
         until = self.cooldown(c["id"], pos)
         if command.source == "candidate" and not command.evidence:
@@ -169,6 +170,8 @@ class ApplicationFacade:
         if app["version"] != command.expected_version:
             raise DomainError("VERSION_CONFLICT", "应聘记录已更新，请刷新", 409)
         action = command.action
+        if app["stage"] == "hired":
+            raise DomainError("HIRE_RESULT_REQUIRED", "已录用记录须通过录用结果回填处理", 409)
         if action == "undo_reject":
             if app["outcome"] != "rejected" or app["notice_status"] == "sent":
                 raise DomainError("INVALID_TRANSITION", "当前不能撤销淘汰", 409)
@@ -278,7 +281,7 @@ class ApplicationFacade:
         return {
             "total": len(apps),
             "active": sum(not a["outcome"] for a in apps),
-            "hired": sum(a["stage"] == "hired" and not a["outcome"] for a in apps),
+            "hired": sum(a["stage"] == "hired" and a["outcome"] in {None, "joined"} for a in apps),
             "stages": {
                 stage: sum(a["stage"] == stage and not a["outcome"] for a in apps)
                 for stage in STAGES
@@ -287,7 +290,7 @@ class ApplicationFacade:
 
     def close_position(self, ctx, pid):
         for app in self.store.all():
-            if app["position_id"] == pid and not app["outcome"]:
+            if app["position_id"] == pid and not app["outcome"] and app["stage"] != "hired":
                 app.update(
                     outcome="position_closed",
                     ended_at=self.clock.now().isoformat(),
@@ -299,6 +302,8 @@ class ApplicationFacade:
                 self.interviews.cancel_application(ctx, app["id"])
 
     def rekey(self, ids, canonical_id):
+        if self.hiring:
+            self.hiring.guard_merge([*ids, canonical_id])
         apps = self.store.all()
         occupied = {
             a["position_id"]
@@ -322,11 +327,54 @@ class ApplicationFacade:
             self.store.save(app, old)
 
     def erase(self, ids):
+        if self.hiring:
+            self.hiring.erase(ids)
         self.interviews.erase(ids)
         self.store.erase(ids)
 
     def interview_context(self, aid):
         return self.store.get(aid)
+
+    def hiring_applications(self):
+        return self.store.all()
+
+    def hiring_transition(self, ctx, aid, action, reason=""):
+        """Strong consistency exception: caller holds org lock; hiring quota and stage commit together."""
+        app = self.store.get(aid)
+        if not app or app["outcome"]:
+            raise DomainError("APPLICATION_ENDED", "应聘记录已结束", 409)
+        app["reason"] = reason
+        old = app["stage"]
+        if action == "hire":
+            if old != "manager_eval":
+                raise DomainError("INVALID_TRANSITION", "须先完成面试和经理决定", 409)
+            pos = self.positions.hiring_context(app["position_id"])
+            if pos["status"] == "closed" or pos["frozen"] or pos["hired"] >= pos["planned"]:
+                raise DomainError("HIRE_CAPACITY", "岗位已冻结、关闭或可招名额不足", 409)
+            if any(
+                a["id"] != aid and a["stage"] == "hired" and a["outcome"] in {None, "joined"}
+                for a in self.for_candidates(self.candidates.family(app["canonical_id"]))
+            ):
+                raise DomainError("ALREADY_HIRED", "候选人已在其他岗位录用", 409)
+            app.update(stage="hired", furthest_stage="hired")
+        elif action in {"declined", "no_show", "joined"}:
+            if old != "hired":
+                raise DomainError("INVALID_TRANSITION", "仅已录用记录可回填结果", 409)
+            app.update(outcome=action, ended_at=self.clock.now().isoformat(), outcome_stage=old)
+        elif action in {"reject", "withdraw"}:
+            app.update(
+                outcome="rejected" if action == "reject" else "withdrawn",
+                ended_at=self.clock.now().isoformat(),
+                outcome_stage=old,
+                reason_code="other",
+            )
+            self.interviews.cancel_application(ctx, aid)
+        elif action == "extra_round":
+            if old != "manager_eval":
+                raise DomainError("INVALID_TRANSITION", "仅业务评估阶段可以追加面试", 409)
+            app["stage"] = "interview"
+        self.save(ctx, app, "hiring_" + action, old)
+        return app
 
     def interview_stage(self, ctx, aid, stage):
         app = self.store.get(aid)
@@ -356,7 +404,10 @@ class ApplicationFacade:
                 "id": a["id"],
                 "position_name": a["position_name"],
                 "status": "已结束"
-                if a["notice_status"] == "sent" or a["outcome"] in {"withdrawn", "transferred"}
+                if a["notice_status"] == "sent"
+                or a["outcome"] in {"withdrawn", "transferred", "declined", "no_show"}
+                else "已入职"
+                if a["outcome"] == "joined"
                 else labels.get(a["stage"], "等待结果"),
             }
             for a in self.for_candidates(self.candidates.family(cid))

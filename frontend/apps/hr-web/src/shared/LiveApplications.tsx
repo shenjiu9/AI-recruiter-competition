@@ -22,6 +22,9 @@ export const STAGE_LABEL: Record<string, string> = {
   withdrawn: '候选人放弃',
   transferred: '已转岗位',
   position_closed: '岗位关闭终止',
+  declined: '未接受录用',
+  no_show: '未入职',
+  joined: '已入职',
 };
 const ACTION_LABEL: Record<ApplicationCommand['action'], string> = {
   advance: '推进下一阶段',

@@ -5,7 +5,7 @@ from app.kernel.types import DomainError
 
 
 class HeadcountStore(Protocol):
-    def release(self, req_id): ...
+    def release(self, req_id, retain=0): ...
     def get(self, dept, year): ...
     def list(self, departments, year): ...
     def save(self, dept, command, today): ...
@@ -13,8 +13,8 @@ class HeadcountStore(Protocol):
 
 
 class HeadcountService:
-    def release_headcount(self, ctx, req_id):
-        count = self.hc.release(req_id)
+    def release_headcount(self, ctx, req_id, retain=0):
+        count = self.hc.release(req_id, retain)
         if count:
             self.journal.record(
                 ctx, "org.headcount_released", req_id, 1, None, {"released": count}, False

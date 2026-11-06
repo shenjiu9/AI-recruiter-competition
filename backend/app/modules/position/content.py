@@ -325,8 +325,13 @@ class PositionContent:
         self._close_reason(reason)
         if self.applications:
             self.applications.close_position(ctx, pos["id"])
+        allocations = (
+            self.applications.hiring.allocations(pos["id"])
+            if self.applications and self.applications.hiring
+            else {}
+        )
         for source in sorted(pos["sources"], key=lambda s: s["id"]):
-            self.org.release_headcount(ctx, source["id"])
+            self.org.release_headcount(ctx, source["id"], retain=allocations.get(source["id"], 0))
         pos["status"] = "closed"
         pos["closed_reason"] = reason
         pos["close_request"] = None

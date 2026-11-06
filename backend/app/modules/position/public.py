@@ -146,6 +146,28 @@ class PositionFacade(PositionContent):
             "dept": pos["dept"],
         }
 
+    def hiring_context(self, pid):
+        """Trusted module port, never returned directly by an API."""
+        pos = self.store.get(pid)
+        if not pos:
+            raise DomainError("NOT_FOUND", "岗位不存在", 404)
+        return {
+            **self.interview_state(pid),
+            "id": pid,
+            "version": pos["version"],
+            "fields": pos["fields"],
+            "sources": pos["sources"],
+            "manager_id": pos["manager_id"],
+            "owner_id": pos["owner_id"],
+            "shared_ids": pos.get("shared_ids", []),
+            "confidential": pos["confidential"],
+            "planned": sum(s["count"] for s in pos["sources"]),
+            "hired": self.applications.counts(pid)["hired"],
+        }
+
+    def hiring_positions(self):
+        return [self.hiring_context(p["id"]) for p in self.store.all()]
+
     def application_context(self, ctx, pos_id):
         pos = self._get(ctx, pos_id)
         pause = next(

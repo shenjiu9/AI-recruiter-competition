@@ -15,6 +15,34 @@ type Routes = { [K in keyof ApiClient]: (...args: Parameters<ApiClient[K]>) => R
 
 const enc = encodeURIComponent;
 const routes: Routes = {
+  downloadHireHandoff: (id) => ({
+    method: 'GET',
+    path: `/hr/hiring/${enc(id)}/handoff.xlsx`,
+    binary: true,
+  }),
+  liveHires: (page, filters = {}) => ({
+    method: 'GET',
+    path: `/hr/hiring?page=${page}&${new URLSearchParams(filters)}`,
+  }),
+  liveHire: (id) => ({ method: 'GET', path: `/hr/hiring/${enc(id)}` }),
+  hireCommand: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/hiring/${enc(id)}/actions`,
+    body,
+    opts,
+  }),
+  liveWorkbench: () => ({ method: 'GET', path: '/hr/workbench-live' }),
+  resolveLiveCard: (id, body, opts) => ({
+    method: 'POST',
+    path: `/hr/decision-cards/${enc(id)}/resolve`,
+    body,
+    opts,
+  }),
+  liveAutomation: (filters) => ({
+    method: 'GET',
+    path: `/hr/automation-live?${new URLSearchParams(filters)}`,
+  }),
+  saveLiveAutomation: (body, opts) => ({ method: 'POST', path: '/hr/automation-live', body, opts }),
   liveInterviews: (page, filters = {}) => ({
     method: 'GET',
     path: `/hr/interviews?page=${page}&${new URLSearchParams(filters)}`,

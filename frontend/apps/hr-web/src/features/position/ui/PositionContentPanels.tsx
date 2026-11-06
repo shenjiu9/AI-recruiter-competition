@@ -510,6 +510,11 @@ export function PositionContentPanels({
         查看本岗位面试日程与面评
       </Link>
       <PositionInterviewSchedule id={pos.id} />
+      <p>
+        <Link to={`/hiring?position_id=${encodeURIComponent(pos.id)}`}>
+          本岗位录用评估、移交与结果回填
+        </Link>
+      </p>
       {pos.interviewPlans.at(-1)?.rounds.map((r, i) => (
         <p key={i}>
           第 {i + 1} 轮：{r.name} · {r.duration} 分钟 · {r.criteria}

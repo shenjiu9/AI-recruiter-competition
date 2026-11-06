@@ -16,6 +16,7 @@ import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { HeadcountSettingsPage } from '../pages/HeadcountSettingsPage';
 import { SalarySettingsPage } from '../pages/SalarySettingsPage';
 import { OrganizationSettingsPage } from '../pages/OrganizationSettingsPage';
+import { HiringPage } from '../pages/HiringPage';
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,8 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'workbench', element: <WorkbenchPage /> },
+      { path: 'hiring', element: <HiringPage /> },
+      { path: 'hiring/:id', element: <HiringPage /> },
       { path: 'requisitions', element: <RequisitionListPage /> },
       { path: 'requisitions/new', element: <RequisitionNewPage /> },
       { path: 'requisitions/:id', element: <RequisitionDetailPage /> },

@@ -703,6 +703,8 @@ function CandidateDetailContent({ id }: { id: string }) {
         <Link to={`/interviews?candidate_id=${encodeURIComponent(c.id)}`}>
           查看该候选人的面试安排与面评
         </Link>
+        {' · '}
+        <Link to={`/hiring?candidate_id=${encodeURIComponent(c.id)}`}>录用与结果回填</Link>
       </p>
       {c.can_edit && <LiveConversation key={c.id} id={c.id} applications={c.applications} />}
       {c.can_edit && (
