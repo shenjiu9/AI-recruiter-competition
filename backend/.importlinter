@@ -1,0 +1,12 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:layers]
+name = API -> engine -> modules -> platform -> kernel
+type = layers
+layers =
+    app.interfaces
+    app.engine
+    app.modules
+    app.platform
+    app.kernel

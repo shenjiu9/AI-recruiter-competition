@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+**/.env*
+**/.venv
+**/__pycache__
+**/*.db
+**/.turbo
+test-results
+playwright-report

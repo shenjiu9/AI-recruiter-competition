@@ -2,7 +2,10 @@ import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-quer
 import { Toast } from 'antd-mobile';
 import { toAppError, useIdempotencyKey, type WriteOpts } from '@recruiter/api-client';
 
-export function useWrite<V, R>(fn: (vars: V, opts: WriteOpts) => Promise<R>, cfg: { invalidate?: QueryKey[]; success?: string } = {}) {
+export function useWrite<V, R>(
+  fn: (vars: V, opts: WriteOpts) => Promise<R>,
+  cfg: { invalidate?: QueryKey[]; success?: string } = {},
+) {
   const qc = useQueryClient();
   const idem = useIdempotencyKey();
   return useMutation({
@@ -13,8 +16,10 @@ export function useWrite<V, R>(fn: (vars: V, opts: WriteOpts) => Promise<R>, cfg
       if (cfg.success) Toast.show({ icon: 'success', content: cfg.success });
     },
     onError: (e) => {
-      idem.reset();
-      Toast.show({ icon: 'fail', content: toAppError(e).message });
+      const error = toAppError(e);
+      if (error.status >= 400 && error.status < 500) idem.reset();
+      cfg.invalidate?.forEach((k) => void qc.invalidateQueries({ queryKey: k }));
+      Toast.show({ icon: 'fail', content: error.message });
     },
   });
 }

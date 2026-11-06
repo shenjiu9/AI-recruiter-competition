@@ -13,14 +13,21 @@ AI 招聘官系统的需求、MVP 规划与详细实现设计。三份文档从�
 | 目录 | 内容 |
 | --- | --- |
 | [frontend/](frontend/README.md) | 前端 monorepo（pnpm + Turborepo）：HR Web、飞书内 H5、候选人 H5，以及共享的领域、接口、主题与组件包 |
-| backend/ | 后端，尚未开始 |
+| [backend/](backend/README.md) | 招聘需求、岗位、候选人、沟通、面试、录用和 Dify 任务引擎；权限、幂等、审计、迁移与测试 |
+| [deploy/](deploy/compose.yaml) | 本地 Docker Compose：PostgreSQL、Redis、API 和三端前端；Dify 安装与工作流配置脚本 |
+| [交付任务](docs/04-delivery-plan.md) | 后端、联调、测试的分批任务与剩余范围 |
+| [本机运行手册](docs/05-local-runbook.md) | Docker 启动、DeepSeek 配置、AI 任务复核、加密备份与恢复验证 |
 
 ```bash
 pnpm install
 pnpm dev:hr   # 默认使用 mock 数据，无需后端
 ```
 
+本机已完成配置时，在 PowerShell 执行 `./deploy/start_local.ps1` 启动 Dify 与真实 API 三端；更新代码后加 `-Rebuild`。入口与私有配置位置见本机运行手册。
+
 ## 约定
+
+当前核心人工招聘流程已接通真实后端；AI 任务引擎及 A1–A7 建议组件已实现，本机 Dify 已部署、按组件配置 DeepSeek 模型并完成合成资料真实调用。当前图为单 LLM 组件，业务编排与校验在后端，不等于完整 A1–A7 工作流。真实模型质量验收、完整 AI 初面和部分业务需求仍待完成，具体边界以交付任务和 [ADR 0014](docs/adr/0014-dify-jobs-and-local-operations.md) 为准。外部服务未配置时不会模拟已投递或已上线。
 
 - 三份文档冲突时：业务规则以 PRD 为准；实现范围以 MVP 规划为准；模块边界、函数签名与工程规范以详细实现文档为准。
 - 技术栈：Python 3.12 + FastAPI、PostgreSQL、Redis、Dify、React + Ant Design；集成飞书、腾讯会议、短信服务。

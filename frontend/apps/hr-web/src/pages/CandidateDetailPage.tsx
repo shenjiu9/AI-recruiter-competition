@@ -5,10 +5,25 @@ import { formatDate, formatDateTime, type EvidenceRef } from '@recruiter/domain'
 import { usePermission } from '@recruiter/permissions';
 import { track, usePageView } from '@recruiter/telemetry';
 import { ConversationPanel, EmptyState, ResumeViewer, StageBadge } from '@recruiter/ui-kit';
-import { ApplicationStrip, CandidateHeader, EvaluationPanel, useCandidateDetail, useConversationActions } from '../features/candidate';
+import {
+  ApplicationStrip,
+  CandidateHeader,
+  EvaluationPanel,
+  useCandidateDetail,
+  useConversationActions,
+} from '../features/candidate';
+import { LiveCandidateDetail } from '../features/candidate/ui/LiveCandidates';
 
 /** CD-02 候选人详情：评估与简历并排，证据一点就对上 */
 export function CandidateDetailPage() {
+  return import.meta.env.VITE_USE_MOCK === 'false' ? (
+    <LiveCandidateDetail />
+  ) : (
+    <MockCandidateDetail />
+  );
+}
+
+function MockCandidateDetail() {
   usePageView('CD-02');
   const { id = '' } = useParams();
   const [params, setParams] = useSearchParams();
@@ -21,19 +36,30 @@ export function CandidateDetailPage() {
   const tab = params.get('tab') ?? 'eval';
 
   const onEvidence = (e: EvidenceRef) => {
-    if (e.kind === 'resume') setRefs((cur) => (cur.length === 1 && cur[0] === e.ref ? [] : [e.ref]));
+    if (e.kind === 'resume')
+      setRefs((cur) => (cur.length === 1 && cur[0] === e.ref ? [] : [e.ref]));
     else if (e.kind === 'message') {
       setParams({ tab: 'conversation' });
     }
   };
 
   if (d.candidate.isLoading) return <Skeleton active />;
-  if (!d.candidate.data) return <EmptyState title="找不到这位候选人" why="可能已被合并、删除，或者不在你的数据范围内。" action={<Link to="/candidates">回到人才库</Link>} />;
+  if (!d.candidate.data)
+    return (
+      <EmptyState
+        title="找不到这位候选人"
+        why="可能已被合并、删除，或者不在你的数据范围内。"
+        action={<Link to="/candidates">回到人才库</Link>}
+      />
+    );
   const c = d.candidate.data;
 
   return (
     <div>
-      <Breadcrumb style={{ marginBottom: 12 }} items={[{ title: <Link to="/candidates">候选人</Link> }, { title: c.name }]} />
+      <Breadcrumb
+        style={{ marginBottom: 12 }}
+        items={[{ title: <Link to="/candidates">候选人</Link> }, { title: c.name }]}
+      />
       <CandidateHeader c={c} />
       {d.applications.data && (
         <ApplicationStrip
@@ -54,16 +80,46 @@ export function CandidateDetailPage() {
             key: 'eval',
             label: '评估与简历',
             children: (
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 7fr)', gap: 24, alignItems: 'start' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 7fr)',
+                  gap: 24,
+                  alignItems: 'start',
+                }}
+              >
                 <section className="panel" style={{ padding: 16 }} aria-label="AI 评估表">
-                  <EvaluationPanel ev={d.evaluation.data} activeRefs={refs} onEvidence={onEvidence} onAsk={() => message.success('已加入补问，AI 会在下一条消息里问候选人')} />
+                  <EvaluationPanel
+                    ev={d.evaluation.data}
+                    activeRefs={refs}
+                    onEvidence={onEvidence}
+                    onAsk={() => message.success('已加入补问，AI 会在下一条消息里问候选人')}
+                  />
                 </section>
-                <section className="panel" style={{ padding: 16, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 120px)', overflow: 'auto' }} aria-label="简历原文">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <section
+                  className="panel"
+                  style={{
+                    padding: 16,
+                    position: 'sticky',
+                    top: 80,
+                    maxHeight: 'calc(100vh - 120px)',
+                    overflow: 'auto',
+                  }}
+                  aria-label="简历原文"
+                >
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}
+                  >
                     <strong style={{ fontWeight: 500 }}>简历原文</strong>
-                    <span className="muted" style={{ fontSize: 12 }}>{d.resume.data?.fileName}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      {d.resume.data?.fileName}
+                    </span>
                   </div>
-                  {d.resume.data ? <ResumeViewer resume={d.resume.data} activeRefs={refs} /> : <Skeleton active />}
+                  {d.resume.data ? (
+                    <ResumeViewer resume={d.resume.data} activeRefs={refs} />
+                  ) : (
+                    <Skeleton active />
+                  )}
                 </section>
               </div>
             ),
@@ -103,10 +159,21 @@ export function CandidateDetailPage() {
                 pagination={false}
                 dataSource={d.applications.data ?? []}
                 columns={[
-                  { title: '岗位', render: (_, a) => <Link to={`/positions/${a.positionId}`}>{a.positionName}</Link> },
-                  { title: '开始时间', render: (_, a) => <span className="num">{formatDate(a.startedAt)}</span> },
+                  {
+                    title: '岗位',
+                    render: (_, a) => (
+                      <Link to={`/positions/${a.positionId}`}>{a.positionName}</Link>
+                    ),
+                  },
+                  {
+                    title: '开始时间',
+                    render: (_, a) => <span className="num">{formatDate(a.startedAt)}</span>,
+                  },
                   { title: '来源', dataIndex: 'source' },
-                  { title: '阶段或结论', render: (_, a) => <StageBadge stage={a.stage} ended={a.ended?.result} /> },
+                  {
+                    title: '阶段或结论',
+                    render: (_, a) => <StageBadge stage={a.stage} ended={a.ended?.result} />,
+                  },
                   { title: '原因', render: (_, a) => a.ended?.reason ?? a.subStatus },
                 ]}
               />
@@ -122,8 +189,14 @@ export function CandidateDetailPage() {
                   color: l.isAi ? 'var(--rc-ai)' : 'var(--rc-brand)',
                   children: (
                     <div>
-                      <span className="num muted" style={{ marginRight: 12, fontSize: 12 }}>{formatDateTime(l.at)}</span>
-                      {l.isAi && <span className="rc-tag rc-ai" style={{ marginRight: 6 }}>AI</span>}
+                      <span className="num muted" style={{ marginRight: 12, fontSize: 12 }}>
+                        {formatDateTime(l.at)}
+                      </span>
+                      {l.isAi && (
+                        <span className="rc-tag rc-ai" style={{ marginRight: 6 }}>
+                          AI
+                        </span>
+                      )}
                       <span>{l.actor}</span>
                       <div>{l.text}</div>
                     </div>
