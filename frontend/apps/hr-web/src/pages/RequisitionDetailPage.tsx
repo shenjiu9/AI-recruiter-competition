@@ -1,4 +1,15 @@
-import { Alert, Button, Descriptions, Input, Modal, Space, Spin, Steps, Timeline } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Input,
+  Modal,
+  Space,
+  Spin,
+  Steps,
+  Timeline,
+} from 'antd';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -25,8 +36,41 @@ export function RequisitionDetailPage() {
   if (!query.data) return <Alert type="error" message={query.error?.message ?? '需求不存在'} />;
   const req = query.data;
   const owner = session?.userId === req.ownerId || session?.userId === req.managerId;
+  const current = req.chain[req.currentNode];
   const approver =
-    req.status === 'in_approval' && req.chain[req.currentNode]?.approver_id === session?.userId;
+    req.status === 'in_approval' && !!current && current.approver_id === session?.userId;
+  const upcoming = req.chain
+    .slice(req.currentNode + 1)
+    .find((node) => node.approver_id === session?.userId);
+  const approvalMessage =
+    req.status === 'in_approval'
+      ? approver
+        ? '轮到你审批了'
+        : current
+          ? `等待${current.approver}处理 · ${current.name}`
+          : '暂时无法确认当前审批人'
+      : {
+          draft: '需求尚未提交',
+          approved: '审批流程已完成',
+          rejected: '本次审批已结束，等待修改后重新提交',
+          withdrawn: '申请已撤回，等待重新提交',
+        }[req.status];
+  const approvalDescription =
+    req.status === 'in_approval'
+      ? approver
+        ? `请核对下方需求信息，再选择通过、驳回或转交。当前节点：${current.name}。`
+        : !current
+          ? '请刷新进度；如果仍无法显示，请联系管理员检查审批配置。'
+          : upcoming
+            ? `当前登录：${session?.name ?? '未登录'}。尚未轮到你的「${upcoming.name}」节点；前序审批通过后，这里的按钮会开放。`
+            : `当前登录：${session?.name ?? '未登录'}。此节点由指定审批人处理，同一角色的其他账号也不能代为审批。你可以查看进度和处理记录。`
+      : {
+          draft: '提交后才会开始审批，请由需求发起人或用人经理完善并提交。',
+          approved: '无需再次审批，可查看下方生成的岗位和处理记录。',
+          rejected: '请查看处理记录中的驳回原因，由需求发起人或用人经理修改后重新提交。',
+          withdrawn: '当前没有待处理的审批，可由需求发起人或用人经理编辑后重新提交。',
+        }[req.status];
+  const approvalDisabled = !approver || action.isPending || query.isFetching || query.isError;
   return (
     <div>
       <Link to="/requisitions">返回招聘需求</Link>
@@ -48,27 +92,65 @@ export function RequisitionDetailPage() {
                 撤回需求
               </Button>
             )}
-            {approver && (
-              <>
-                <Button onClick={() => setTransferring(true)}>转交审批</Button>
-                <Button
-                  type="primary"
-                  loading={action.isPending}
-                  onClick={() => action.mutate({ action: 'approve' })}
-                >
-                  通过审批
-                </Button>
-                <Button danger disabled={action.isPending} onClick={() => setRejecting(true)}>
-                  驳回需求
-                </Button>
-                {req.chain[req.currentNode]?.id === 'manager' && (
-                  <Button onClick={() => setConfirming(true)}>修改并确认</Button>
-                )}
-              </>
-            )}
           </Space>
         }
       />
+      <section aria-label="审批处理" style={{ marginBottom: 24 }}>
+        <Card
+          title="审批处理"
+          extra={
+            <Button loading={query.isFetching} onClick={() => void query.refetch()}>
+              刷新进度
+            </Button>
+          }
+        >
+          <div aria-live="polite">
+            <Alert
+              showIcon
+              type={req.status === 'approved' ? 'success' : 'info'}
+              message={approvalMessage}
+              description={<div id="approval-explanation">{approvalDescription}</div>}
+              style={{ marginBottom: 16 }}
+            />
+            {query.isError && <Alert type="error" message="进度刷新失败，请刷新成功后再审批。" />}
+          </div>
+          <Space wrap>
+            <Button
+              type="primary"
+              disabled={approvalDisabled}
+              loading={action.isPending}
+              aria-describedby="approval-explanation"
+              onClick={() => action.mutate({ action: 'approve' })}
+            >
+              通过审批
+            </Button>
+            <Button
+              danger
+              disabled={approvalDisabled}
+              aria-describedby="approval-explanation"
+              onClick={() => setRejecting(true)}
+            >
+              驳回需求
+            </Button>
+            <Button
+              disabled={approvalDisabled}
+              aria-describedby="approval-explanation"
+              onClick={() => setTransferring(true)}
+            >
+              转交审批
+            </Button>
+            {req.status === 'in_approval' && current?.id === 'manager' && (
+              <Button
+                disabled={approvalDisabled}
+                aria-describedby="approval-explanation"
+                onClick={() => setConfirming(true)}
+              >
+                修改并确认
+              </Button>
+            )}
+          </Space>
+        </Card>
+      </section>
       {req.status === 'approved' && (
         <Alert
           style={{ marginBottom: 20 }}

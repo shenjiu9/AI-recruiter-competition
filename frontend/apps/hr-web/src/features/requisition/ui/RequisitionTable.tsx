@@ -127,6 +127,10 @@ export function RequisitionTable({
           defaultSortOrder: 'descend',
           sorter: (a, b) => (a.submittedAt ?? '').localeCompare(b.submittedAt ?? ''),
         },
+        {
+          title: '审批入口',
+          render: (_, r) => <Link to={`/requisitions/${r.id}`}>查看审批</Link>,
+        },
       ]}
     />
   );

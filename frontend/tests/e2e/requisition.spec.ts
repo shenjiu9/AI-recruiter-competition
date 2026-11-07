@@ -36,13 +36,13 @@ async function apiHeaders(request: APIRequestContext, user: string) {
     'Idempotency-Key': crypto.randomUUID(),
   };
 }
-async function salesRequest(request: APIRequestContext, title: string) {
+async function salesRequest(request: APIRequestContext, title: string, employmentType = '正式') {
   const response = await request.post(`${apiRoot}/hr/requisitions`, {
     headers: await apiHeaders(request, 'hr'),
     data: {
       recruitType: '社招',
       dept: '销售部 / 华南大区',
-      employmentType: '正式',
+      employmentType,
       reqType: '新增',
       headcount: '1',
       title,
@@ -60,6 +60,67 @@ async function salesRequest(request: APIRequestContext, title: string) {
   expect(response.status()).toBe(201);
   return response.json();
 }
+
+test('审批入口常驻：说明等待原因、刷新轮转、禁止越权并完成本人审批', async ({ page, request }) => {
+  // 不消耗其他审批场景共用的正式编制。
+  let req = await salesRequest(request, `审批入口-${Date.now()}`, '实习');
+  const path = `${apiRoot}/hr/requisitions/${req.id}`;
+  await login(page, 'hrbp');
+  await page.goto('/requisitions');
+  await page
+    .getByRole('row')
+    .filter({ hasText: req.title })
+    .getByRole('link', { name: '查看审批' })
+    .click();
+  const panel = page.getByRole('region', { name: '审批处理' });
+  await expect(panel.getByText('等待周振华处理 · 用人经理确认')).toBeVisible();
+  await expect(panel).toContainText('尚未轮到你的');
+  for (const name of ['通过审批', '驳回需求', '转交审批', '修改并确认']) {
+    await expect(panel.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name, exact: true })).toBeDisabled();
+  }
+  const denied = await request.post(`${path}/approve`, {
+    headers: await apiHeaders(request, 'hrbp'),
+    data: { node_id: req.chain[req.currentNode].id, expected_version: req.version },
+  });
+  expect(denied.status()).toBe(403);
+  await page.screenshot({ path: 'test-results/approval-waiting-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await panel.scrollIntoViewIfNeeded();
+  await expect(panel.getByRole('button', { name: '通过审批', exact: true })).toBeInViewport();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+  await page.screenshot({ path: 'test-results/approval-waiting-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const user of ['sales', 'director']) {
+    const response = await request.post(`${path}/approve`, {
+      headers: await apiHeaders(request, user),
+      data: { node_id: req.chain[req.currentNode].id, expected_version: req.version },
+    });
+    expect(response.ok()).toBeTruthy();
+    req = await response.json();
+    await panel.getByRole('button', { name: '刷新进度' }).click();
+    if (user === 'sales') {
+      await expect(panel).toContainText('等待部门负责人处理');
+      await expect(panel.getByRole('button', { name: '通过审批', exact: true })).toBeDisabled();
+    }
+  }
+  await expect(panel).toContainText('轮到你审批了');
+  await expect(panel.getByRole('button', { name: '通过审批', exact: true })).toBeEnabled();
+  await login(page, 'hr');
+  await page.goto(`/requisitions/${req.id}`);
+  await expect(panel).toContainText('此节点由指定审批人处理');
+  await expect(panel.getByRole('button', { name: '通过审批', exact: true })).toBeDisabled();
+  await login(page, 'hrbp');
+  await page.goto(`/requisitions/${req.id}`);
+  await panel.getByRole('button', { name: '通过审批', exact: true }).click();
+  await expect(panel).toContainText('审批流程已完成');
+  for (const name of ['通过审批', '驳回需求', '转交审批']) {
+    await expect(panel.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name, exact: true })).toBeDisabled();
+  }
+});
 
 test('代理修改确认：业务 H5 预检拦截、薪资加签、两端差异记录及完整审批', async ({
   page,
@@ -190,6 +251,8 @@ test('真实 API：HR 保存恢复草稿、提交、业务方驳回、重提、�
   await page.reload();
   await page.getByRole('link', { name: title, exact: true }).click();
   const detailUrl = page.url();
+  await expect(page.getByRole('region', { name: '审批处理' })).toContainText('需求尚未提交');
+  await expect(page.getByRole('button', { name: '通过审批', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '编辑需求' }).click();
   await expect(page.locator('#f-duties')).toHaveValue('处理客户咨询和问题');
   await page.getByRole('button', { name: '提交审批', exact: true }).click();
@@ -207,6 +270,8 @@ test('真实 API：HR 保存恢复草稿、提交、业务方驳回、重提、�
   await expect(card).toHaveCount(0);
   await page.reload();
   await expect(page.getByText(/已驳回/)).toBeVisible();
+  await expect(page.getByRole('region', { name: '审批处理' })).toContainText('等待修改后重新提交');
+  await expect(page.getByRole('button', { name: '通过审批', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '编辑需求' }).click();
   await page.locator('#f-reason').fill('新增两条客户服务业务线，需要扩大团队');
   await page.getByRole('button', { name: '提交审批', exact: true }).click();
