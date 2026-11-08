@@ -486,16 +486,18 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
                           ? 'error'
                           : fieldChecks(d.key).length
                             ? 'warning'
-                            : undefined
+                            : ''
                       }
                       help={
-                        <div id={`feedback-${d.key}`}>
-                          {fieldChecks(d.key)
-                            .filter((p) => targets(p.key)[0] === d.key)
-                            .map((p) => (
-                              <div key={p.key}>{p.detail}</div>
-                            ))}
-                        </div>
+                        fieldChecks(d.key).some((p) => targets(p.key)[0] === d.key) ? (
+                          <div id={`feedback-${d.key}`}>
+                            {fieldChecks(d.key)
+                              .filter((p) => targets(p.key)[0] === d.key)
+                              .map((p) => (
+                                <div key={p.key}>{p.detail}</div>
+                              ))}
+                          </div>
+                        ) : undefined
                       }
                     >
                       <Tooltip

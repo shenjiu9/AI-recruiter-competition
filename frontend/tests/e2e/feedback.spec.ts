@@ -26,6 +26,11 @@ test('反馈回归：薪资带入、字段预检、工作台审批入口与撤�
   await expect(page.locator('#f-series')).toHaveValue('客服');
   await expect(page.locator('#f-level')).toHaveValue('P3');
   await expect(page.locator('#f-city')).toHaveValue('深圳');
+  for (const id of ['#f-series', '#f-level', '#f-city']) {
+    await expect(page.locator('.ant-form-item').filter({ has: page.locator(id) })).not.toHaveClass(
+      /ant-form-item-has-error/,
+    );
+  }
   await expect(page.locator('#f-salary')).not.toHaveValue('');
   await page.locator('#f-salary').fill('不合法金额');
   await expect(page.locator('#f-salary')).toHaveAttribute('aria-invalid', 'true');
