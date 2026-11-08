@@ -75,6 +75,8 @@ def execute(client, login, action, reason="在 AI 助手中确认"):
         ("给张三发消息：明天10点电话沟通", "message"),
         ("你能做什么", "help"),
         ("今天天气不错", "none"),
+        ("给张伟发offer，月薪两万", "none"),
+        ("淘汰张三，薪资不匹配", "reject"),
     ],
 )
 def test_rules_route_everyday_sentences(text, intent):
@@ -240,3 +242,14 @@ def test_assistant_is_hr_only_and_never_writes(client, login, container, fields)
     ok(say(client, login, "淘汰张三"))
     after = ok(client.get(f"/api/v1/hr/positions/{pos['id']}/applications", headers=login()))
     assert after[0]["version"] == app["version"] and after[0]["stage"] == "reach"
+
+
+def test_offers_and_pay_are_declined_even_with_a_known_name(client, login, container, fields):
+    enable(client, login)
+    opened(client, login, fields, container)
+    person(client, login, "张三")
+    for gateway in (Router(a0=False), Router({"intent": "hires", "candidate": "张三"})):
+        container.ai_gateway = gateway
+        result = ok(say(client, login, "给张三发offer，月薪两万"))
+        assert result["intent"] == "none" and "offer" in result["reply"]
+        assert not blocks(result, "confirm")
