@@ -5,8 +5,10 @@ import {
   CheckSquareOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  FundOutlined,
   RobotOutlined,
   SearchOutlined,
+  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
@@ -22,8 +24,10 @@ export const STARTERS: { icon: ReactNode; title: string; text: string }[] = [
   { icon: <BarChartOutlined />, title: '岗位招聘进度', text: '岗位招聘进度' },
   { icon: <CalendarOutlined />, title: '最近的面试', text: '最近的面试安排' },
   { icon: <RobotOutlined />, title: '待复核的 AI 结果', text: '待我复核的 AI 结果' },
+  { icon: <FundOutlined />, title: '招聘漏斗与数据', text: '看看招聘漏斗' },
   { icon: <SearchOutlined />, title: '在人才库找人', text: '找会 Excel 的候选人' },
   { icon: <FileTextOutlined />, title: '让 AI 写 JD', text: '帮客服专员写一版 JD' },
+  { icon: <TeamOutlined />, title: '决策卡与提醒', text: '有哪些决策卡要处理' },
 ];
 
 function Bubble({ turn }: { turn: Turn }) {
@@ -147,7 +151,9 @@ export function Composer({
           disabled={!text.trim() || busy}
         />
       </div>
-      <div className="as-hint">改动数据的操作都会先给你确认卡片 · Enter 发送，Shift+Enter 换行</div>
+      <div className="as-hint">
+        推进、淘汰、发消息会先给你确认；打标签这类小操作直接执行，可撤销 · Enter 发送
+      </div>
     </form>
   );
 }
@@ -169,8 +175,9 @@ export function Conversation({ compact = false }: { compact?: boolean }) {
             </div>
             <h2>{session?.name ? `${session.name}，` : ''}今天想先处理什么？</h2>
             <p>
-              我能查进展、找人、让 AI 写 JD
-              或做评估，也能帮你推进候选人、发消息。会改动数据的操作，都会先请你确认。
+              你在系统里能看到的信息都可以直接问我，进度和数据会用图表回答。我也能让 AI 写
+              JD、做评估，
+              帮你推进候选人、发消息。打标签、设重点这类小操作我直接做，可以撤销；推进、淘汰、发消息会先请你确认。
             </p>
             <div className="as-starters">
               {STARTERS.map((s) => (

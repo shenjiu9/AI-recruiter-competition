@@ -1,13 +1,8 @@
 import { CheckCircleFilled, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Button, Checkbox, Input, Select } from 'antd';
 import { useState } from 'react';
-import {
-  useApi,
-  useReliableWrite,
-  type AssistantAction,
-  type WriteOpts,
-} from '@recruiter/api-client';
-import { useSession } from '@recruiter/auth';
+import { useReliableWrite, type AssistantAction } from '@recruiter/api-client';
+import { needsReason, useRunAction } from './actions';
 import { useAssistant } from './state';
 
 const REJECT_REASONS = [
@@ -19,13 +14,6 @@ const REJECT_REASONS = [
   { value: 'other', label: '其他' },
 ] as const;
 type RejectCode = (typeof REJECT_REASONS)[number]['value'];
-const STAGE: Record<string, string> = {
-  reach: '触达',
-  talking: '沟通中',
-  ai_eval: 'AI 评估',
-  interview: '面试',
-};
-
 interface Props {
   title: string;
   lines: string[];
@@ -49,8 +37,7 @@ export function ConfirmCard({
   danger,
   onCancel,
 }: Props) {
-  const api = useApi();
-  const session = useSession();
+  const runAction = useRunAction();
   const { send } = useAssistant();
   const [reason, setReason] = useState(initial);
   const [code, setCode] = useState<RejectCode | undefined>();
@@ -58,80 +45,8 @@ export function ConfirmCard({
   const [done, setDone] = useState('');
   const [cancelled, setCancelled] = useState(false);
 
-  const run = async (a: AssistantAction, opts: WriteOpts): Promise<string> => {
-    switch (a.kind) {
-      case 'attach': {
-        const app = await api.attachCandidate(
-          { candidate_id: a.candidate_id, position_id: a.position_id, source: 'hr', reason },
-          opts,
-        );
-        return `已把${app.candidate_name ?? '候选人'}关联到“${app.position_name}”，当前阶段：触达。`;
-      }
-      case 'advance': {
-        const app = await api.liveApplicationCommand(
-          a.application_id,
-          {
-            action: 'advance',
-            expected_version: a.expected_version,
-            target_stage: a.target_stage as 'talking',
-            reason,
-          },
-          opts,
-        );
-        return `已推进${app.candidate_name ?? ''}（${app.position_name}）到“${STAGE[app.stage ?? ''] ?? app.stage}”。`;
-      }
-      case 'reject': {
-        const app = await api.liveApplicationCommand(
-          a.application_id,
-          {
-            action: 'reject',
-            expected_version: a.expected_version,
-            reason,
-            reason_code: code,
-            notify,
-          },
-          opts,
-        );
-        return `已淘汰${app.candidate_name ?? ''}（${app.position_name}）${notify ? '，结果通知已排队' : ''}。`;
-      }
-      case 'message': {
-        let conv = await api.liveConversation(a.candidate_id);
-        if (conv.mode !== 'hr' || conv.owner_id !== session?.userId) {
-          conv = (
-            await api.conversationCommand(
-              a.candidate_id,
-              { action: 'take_over', expected_version: conv.version },
-              { idempotencyKey: opts.idempotencyKey + '-take' },
-            )
-          ).conversation;
-        }
-        const result = await api.conversationCommand(
-          a.candidate_id,
-          {
-            action: 'send',
-            expected_version: conv.version,
-            content: a.content,
-            application_ids: a.application_ids,
-          },
-          { idempotencyKey: opts.idempotencyKey + '-send' },
-        );
-        const last = result.conversation.messages.at(-1);
-        return last?.status === 'queued'
-          ? '消息已排队，会在可联系时段发出。'
-          : '消息已发送，会话已由你接管。';
-      }
-      case 'card':
-        await api.resolveLiveCard(
-          a.card_id,
-          { expected_version: a.expected_version, option: a.option as 'dismiss', reason },
-          opts,
-        );
-        return '决策卡已处理。';
-    }
-  };
-
   const op = useReliableWrite(
-    (body: AssistantAction, opts) => run(body, opts),
+    (body: AssistantAction, opts) => runAction(body, { reason, code, notify }, opts),
     (message) => setDone(message),
   );
 
@@ -143,7 +58,7 @@ export function ConfirmCard({
       </div>
     );
   const needsCode = action.kind === 'reject';
-  const ready = (action.kind === 'message' || !!reason.trim()) && (!needsCode || !!code);
+  const ready = (!needsReason(action) || !!reason.trim()) && (!needsCode || !!code);
   return (
     <div
       className={`as-card as-confirm${danger ? ' as-confirm-danger' : ''}`}
@@ -177,7 +92,7 @@ export function ConfirmCard({
           style={{ width: '100%' }}
         />
       )}
-      {action.kind !== 'message' && (
+      {needsReason(action) && (
         <Input
           aria-label="操作原因"
           placeholder="填写原因（写入审计记录）"

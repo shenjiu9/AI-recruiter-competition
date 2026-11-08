@@ -586,7 +586,20 @@ export type AssistantAction =
   | { kind: 'advance'; application_id: string; expected_version: number; target_stage: string }
   | { kind: 'reject'; application_id: string; expected_version: number }
   | { kind: 'message'; candidate_id: string; application_ids: string[]; content: string }
-  | { kind: 'card'; card_id: string; expected_version: number; option: string };
+  | { kind: 'card'; card_id: string; expected_version: number; option: string }
+  | {
+      /** 通用命令：原样发给对应对象的现有 actions 接口 */
+      kind: 'command';
+      target: 'candidate' | 'conversation' | 'position' | 'application';
+      id: string;
+      body: Record<string, unknown> & { action: string; expected_version: number };
+    };
+export type AssistantTone = '' | 'brand' | 'ai' | 'warning' | 'danger' | 'success';
+export interface AssistantPoint {
+  label: string;
+  value: number;
+  tone?: AssistantTone;
+}
 export interface AssistantItem {
   id: string;
   title: string;
@@ -594,7 +607,7 @@ export interface AssistantItem {
   meta: string;
   href: string;
   tag: string;
-  tone: '' | 'brand' | 'ai' | 'warning' | 'danger' | 'success';
+  tone: AssistantTone;
   ask?: string;
   job_id?: string;
   actions?: { label: string; action: AssistantAction; danger: boolean }[];
@@ -606,7 +619,61 @@ export type AssistantBlock =
       href?: string;
       items: { label: string; value: number | string; tone?: string }[];
     }
-  | { type: 'funnel'; items: { label: string; value: number }[] }
+  | { type: 'funnel'; title?: string; items: AssistantPoint[] }
+  | {
+      type: 'progress';
+      title: string;
+      more_href?: string;
+      items: {
+        label: string;
+        value: number;
+        total: number;
+        note: string;
+        tone?: AssistantTone;
+        ask?: string;
+      }[];
+    }
+  | { type: 'bar'; title: string; unit: string; items: AssistantPoint[] }
+  | { type: 'trend'; title: string; unit: string; items: AssistantPoint[] }
+  | { type: 'stack'; title: string; items: AssistantPoint[] }
+  | {
+      type: 'timeline';
+      title: string;
+      href?: string;
+      items: {
+        time: string;
+        title: string;
+        subtitle: string;
+        state: 'done' | 'current' | 'todo' | 'bad';
+      }[];
+    }
+  | {
+      type: 'chat';
+      title: string;
+      href: string;
+      mode: string;
+      items: {
+        id: string;
+        sender: string;
+        label: string;
+        content: string;
+        time: string;
+        status: string;
+      }[];
+    }
+  | {
+      type: 'table';
+      title: string;
+      columns: string[];
+      rows: (string | number)[][];
+      more_href?: string;
+    }
+  | {
+      type: 'done';
+      title: string;
+      lines: string[];
+      undo?: { label: string; action: AssistantAction };
+    }
   | { type: 'list'; title: string; items: AssistantItem[]; more_href?: string }
   | {
       type: 'profile';
@@ -634,6 +701,8 @@ export interface AssistantReply {
   blocks: AssistantBlock[];
   suggestions: string[];
   focus: AssistantFocus;
+  /** 一句话调用了多个工具时，按顺序列出 */
+  steps?: string[];
 }
 
 export interface ApiConfig {
