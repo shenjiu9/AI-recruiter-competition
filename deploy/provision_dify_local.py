@@ -125,13 +125,19 @@ def main():
                         / datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
                     )
                     backup.mkdir(parents=True, exist_ok=True)
-                    exported = call(
-                        "GET",
-                        f"/apps/{app_id}/export",
-                        params={"include_secret": "false"},
+                    exported = client.get(
+                        f"/apps/{app_id}/export", params={"include_secret": "false"}
                     )
-                    saved = backup / f"{component}.yml"
-                    saved.write_text(exported["data"], encoding="utf-8")
+                    if not exported.is_success:
+                        raise SystemExit(
+                            f"Dify export {component}: HTTP {exported.status_code}"
+                        )
+                    if exported.content.startswith(b"PK"):
+                        saved = backup / f"{component}.zip"
+                        saved.write_bytes(exported.content)
+                    else:
+                        saved = backup / f"{component}.yml"
+                        saved.write_text(exported.json()["data"], encoding="utf-8")
                     saved.chmod(0o600)
                 result = call(
                     "POST",
