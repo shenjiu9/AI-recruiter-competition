@@ -41,34 +41,55 @@ AgentIntent = Literal[
     "A7",
     "overview",
     "positions",
+    "pipeline",
+    "stats",
     "candidates",
     "candidate",
+    "conversation",
     "interviews",
     "hires",
     "reviews",
+    "cards",
     "requisitions",
+    "headcount",
+    "salary",
+    "automation",
+    "org",
+    "key",
+    "tag",
+    "take_over",
+    "hand_back",
     "attach",
     "advance",
     "reject",
+    "restore",
     "message",
+    "pause",
+    "resume",
     "help",
     "none",
 ]
 
 
-class AgentRoute(StrictModel):
-    """Router (A0) output for the HR assistant: the intent plus verbatim mentions.
-
-    A0 only sees the sanitized sentence. Every mention must be copied from it, so the
-    backend can verify it and never select a record from a guessed name.
-    """
+class AgentStep(StrictModel):
+    """One tool call: the tool plus the mentions it needs, copied verbatim from the sentence."""
 
     intent: AgentIntent
     position: str = Field(default="", max_length=200)
     candidate: str = Field(default="", max_length=200)
     keyword: str = Field(default="", max_length=100)
     content: str = Field(default="", max_length=8000)
+
+
+class AgentRoute(AgentStep):
+    """Router (A0) output for the HR assistant: the first tool call plus up to two more.
+
+    A0 only sees the sanitized sentence. Every mention must be copied from it, so the
+    backend can verify it and never select a record from a guessed name.
+    """
+
     reason: str = Field(default="", max_length=500)
+    then: list[AgentStep] = Field(default_factory=list, max_length=2)
 
 
 class AgentFocus(StrictModel):

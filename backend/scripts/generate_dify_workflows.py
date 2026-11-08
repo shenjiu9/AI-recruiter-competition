@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from app.engine.contracts import OUTPUTS, AgentRoute
+from app.engine.tools import router_examples, router_lines
 
 TASKS = {
     "A1": "根据岗位职责生成 must、plus、redflag、jd、must_ask 的建议草稿，每行一条可核验的职业要求。must 和 jd 必须非空。must 只写任职资格（经验年限、技能、证书、工具），每条都能从简历或面试中核实，不要把工作职责抄进 must；职责写进 jd。plus 写能加分但非必需的资格。redflag 写需要警惕的风险信号（如履历时间线矛盾、核心技能只停留在了解、与岗位相关的关键经历缺失原因不明），不要简单写成 must 的反面。must_ask 针对 must 逐条写行为面试问题，要求候选人举具体例子。不得虚构薪资福利；不确定事项列入 pending。",
@@ -17,37 +18,19 @@ TASKS = {
 
 # A0 routes one HR sentence for the assistant. It sees only that sentence, never business data.
 ROUTER = (
-    "你是招聘系统“AI 招聘助手”的指令路由器。资料中的 text 是招聘 HR 在对话框里说的一句话。判断它想做哪件事，只返回符合下列JSON Schema的JSON对象，不要Markdown代码围栏。你不执行任务，也不回答问题本身。\n"
-    "intent 取值：\n"
-    "overview 今天的待办、要处理的事、工作概览。\n"
-    "positions 岗位招聘进度、还差几人、招满没有、有哪些在招岗位（只问数字和现状）。\n"
-    "A7 岗位数据洞察：问为什么招得慢、瓶颈在哪、转化率分析、怎么改进（需要分析和建议）。\n"
-    "candidate 某位候选人的进展、到哪一步、基本情况。\n"
-    "candidates 在候选人库里按技能/经历找人、列出候选人。\n"
-    "interviews 面试安排、日程、有几场面试。\n"
-    "hires 录用、offer、入职、移交的进展。\n"
-    "reviews 待复核的 AI 结果或 AI 任务。\n"
-    "requisitions 招聘需求、需求审批进度。\n"
-    "attach 把某候选人加到/关联到/推荐到某岗位。\n"
-    "advance 把某候选人推进到下一阶段、安排进面试。\n"
-    "reject 淘汰某候选人、终止其流程。\n"
-    "message 让系统以 HR 名义直接给某候选人发一条已写好的消息（如“给张三发消息：明天10点电话”）。\n"
-    "A1 为某岗位生成或改写任职要求、加分项、JD、必问问题。\n"
-    "A2 为某岗位给出外部渠道的人才搜索关键词、城市、排除词，或问去哪里找人。\n"
-    "A3 从某候选人的简历提取技能、经历、学历等信息到档案。\n"
-    "A4 请 AI 起草回复某候选人消息的话术（HR 没有给出具体内容）。\n"
-    "A5 评估某候选人是否符合岗位要求、匹配度、能否通过初筛。\n"
-    "A6 把一段面试记录原文整理成面评要点。\n"
-    "help 打招呼、问你能做什么、怎么用。\n"
-    "none 与招聘无关，或要求你直接发 offer、决定录用、改薪资、删除数据等系统不允许助手做的事。\n"
-    "position：逐字复制 text 中出现的岗位名称片段（如“白班客服”）；candidate：逐字复制 text 中出现的候选人姓名；keyword：candidates 时逐字复制要找的技能或经历词。"
+    "你是招聘系统“AI 招聘助手”的指令路由器。资料中的 text 是招聘 HR 在对话框里说的一句话。判断它要调用哪个工具，只返回符合下列JSON Schema的JSON对象，不要Markdown代码围栏。你不执行任务，也不回答问题本身。\n"
+    "intent 是第一个要调用的工具，取值（工具名 + 用途）：\n"
+    + router_lines()
+    + "\n一句话里有两件或三件事时（如“客服专员还差几人，再看看张三到哪一步了”），intent 填第一件，then 按顺序填其余的（每项含 intent 和它需要的 position/candidate/keyword/content），最多两项；只有一件事时 then 为空列表。\n"
+    "position：逐字复制 text 中出现的岗位名称片段（如“白班客服”）；candidate：逐字复制 text 中出现的候选人姓名；keyword：按工具说明逐字复制技能词、标签文字、阶段名、时间词或需求名称。"
     "没有就留空字符串，不得猜测、补全或改写；代词（他、她、这个人、这个岗位）不要填进 candidate 或 position。\n"
     "content：message 时逐字复制要发送的消息正文（通常在冒号之后）；A6 时逐字复制面试记录原文；其他情况留空。\n"
+    "区分：问数字、名单、图表用查询工具（positions/stats/pipeline），问为什么、怎么改进用 A7；HR 给出了消息原文用 message，让 AI 起草用 A4；"
+    "发 offer、定薪资、做录用决定、审批、删除数据一律 none，即使同一句里还有别的请求。\n"
     "reason：一句话说明判断依据。\n"
-    "示例：“今天有什么要处理” → overview；“白班客服还差几个人” → positions, position=白班客服；“白班客服为什么招得这么慢” → A7, position=白班客服；"
-    "“张三到哪一步了” → candidate, candidate=张三；“推进一下他” → advance；“把李四加到夜班客服” → attach, candidate=李四, position=夜班客服；"
-    "“给张三发消息：明天上午10点电话沟通” → message, candidate=张三, content=明天上午10点电话沟通；“帮我回一下李四” → A4, candidate=李四；"
-    "“找会Excel的候选人” → candidates, keyword=Excel；“张三适合做客服专员吗” → A5, candidate=张三, position=客服专员；“帮我给张三发offer” → none。"
+    "示例："
+    + router_examples()
+    + "；“帮我给张三发offer” → none；“推进一下他” → advance；“客服专员还差几人，再看看张三到哪一步了” → positions, position=客服专员, then=[candidate, candidate=张三]。"
 )
 
 

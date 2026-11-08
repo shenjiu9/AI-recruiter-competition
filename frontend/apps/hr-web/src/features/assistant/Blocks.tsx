@@ -9,6 +9,7 @@ import {
   type AssistantBlock,
   type AssistantItem,
 } from '@recruiter/api-client';
+import { Bars, Chat, Done, Funnel, Progress, Stack, Table, Timeline, Trend } from './Charts';
 import { ConfirmCard } from './ConfirmCard';
 import { JobCard, TASK_NAMES } from './JobCard';
 import { useAssistant } from './state';
@@ -31,25 +32,6 @@ function Metrics({ block }: { block: Extract<AssistantBlock, { type: 'metrics' }
           <div key={m.label} className={`as-metric${m.tone ? ' as-tone-' + m.tone : ''}`}>
             <div className="as-metric-v num">{m.value}</div>
             <div className="as-metric-l">{m.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Funnel({ block }: { block: Extract<AssistantBlock, { type: 'funnel' }> }) {
-  const max = Math.max(1, ...block.items.map((i) => i.value));
-  return (
-    <div className="as-card" aria-label="候选人阶段分布">
-      <div className="as-funnel">
-        {block.items.map((s) => (
-          <div key={s.label} className="as-funnel-row">
-            <span className="as-funnel-l">{s.label}</span>
-            <span className="as-funnel-bar">
-              <span style={{ width: `${(s.value / max) * 100}%` }} />
-            </span>
-            <span className="as-funnel-v num">{s.value}</span>
           </div>
         ))}
       </div>
@@ -233,6 +215,22 @@ export function Block({ block }: { block: AssistantBlock }) {
       return <Metrics block={block} />;
     case 'funnel':
       return <Funnel block={block} />;
+    case 'progress':
+      return <Progress block={block} />;
+    case 'bar':
+      return <Bars block={block} />;
+    case 'trend':
+      return <Trend block={block} />;
+    case 'stack':
+      return <Stack block={block} />;
+    case 'timeline':
+      return <Timeline block={block} />;
+    case 'chat':
+      return <Chat block={block} />;
+    case 'table':
+      return <Table block={block} />;
+    case 'done':
+      return <Done block={block} />;
     case 'list':
       return <List block={block} />;
     case 'profile':

@@ -161,3 +161,64 @@ test('HR completes a hiring loop by chatting with the assistant, confirming ever
     });
   }
 });
+
+test('the assistant answers with charts, runs small changes at once and can undo them', async ({
+  page,
+  request,
+}, info) => {
+  const suffix = String(Date.now()).slice(-6);
+  const pos = await openPosition(request, `助手图表岗位${suffix}`);
+  const name = `吴图表${suffix}`;
+  const candidate = await consentedCandidate(request, name);
+  const attached = await request.post(`${API}/applications`, {
+    headers: { ...(await headers(request)), 'Idempotency-Key': crypto.randomUUID() },
+    data: { candidate_id: candidate.id, position_id: pos.id, source: 'hr', reason: '测试' },
+  });
+  expect(attached.ok()).toBeTruthy();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, 'hr', '/assistant');
+
+  // Data questions come back as charts counted from the records.
+  let reply = await say(page, `看看${pos.name}的招聘漏斗`);
+  await expect(reply.getByLabel(/招聘漏斗/)).toBeVisible();
+  await expect(reply.getByLabel('每周新进入流程的人数')).toBeVisible();
+  await page.screenshot({ path: info.outputPath('assistant-stats.png') });
+
+  reply = await say(page, `${pos.name}还差几个人`);
+  await expect(reply.getByRole('progressbar', { name: pos.name })).toHaveAttribute(
+    'aria-valuenow',
+    '0',
+  );
+
+  // Who is where, and one person's journey on a timeline.
+  reply = await say(page, `${pos.name}有哪些候选人`);
+  await expect(reply.getByRole('button', { name, exact: true })).toBeVisible();
+  reply = await say(page, `${name}到哪一步了`);
+  await expect(reply.getByLabel(/应聘进程/)).toContainText('进入岗位');
+
+  // A small, reversible change runs at once and offers an undo through the existing API.
+  reply = await say(page, `把${name}设为重点候选人`);
+  await expect(reply.getByText('已执行')).toBeVisible();
+  const record = async () =>
+    (
+      await request.get(`${API}/candidates/${candidate.id}`, { headers: await headers(request) })
+    ).json();
+  expect((await record()).key_candidate).toBe(true);
+  await reply.getByRole('button', { name: '撤销' }).click();
+  await expect(reply.getByText('已撤销', { exact: true })).toBeVisible();
+  expect((await record()).key_candidate).toBe(false);
+
+  // Two requests in one sentence.
+  reply = await say(page, `${pos.name}还差几个人，再看看${name}到哪一步了`);
+  await expect(reply.getByRole('progressbar', { name: pos.name })).toBeVisible();
+  await expect(reply.getByLabel(/应聘进程/)).toBeVisible();
+
+  // Anything that affects a candidate or a process still waits for confirmation.
+  reply = await say(page, `暂停${pos.name}的招聘`);
+  await expect(reply.getByRole('group', { name: /暂停招聘/ })).toBeVisible();
+  const still = await (
+    await request.get(`${API}/positions/${pos.id}`, { headers: await headers(request) })
+  ).json();
+  expect(still.status).toBe('open');
+  await page.screenshot({ path: info.outputPath('assistant-tools.png') });
+});
