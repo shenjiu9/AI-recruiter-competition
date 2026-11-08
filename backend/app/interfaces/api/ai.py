@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Request
 
-from app.engine.contracts import Ask, JobCommand, StartJob
+from app.engine.agent import respond, route_agent
+from app.engine.contracts import AgentAsk, Ask, JobCommand, StartJob
 from app.engine.intent import plan, route_text
 from app.interfaces.api.dependencies import context, write
 from app.kernel.types import DomainError
@@ -80,3 +81,26 @@ def ask(request: Request, body: Ask):
         if result.get("job_id"):
             result = {**result, "job": s.engine.detail(ctx, result["job_id"])}
         return result
+
+
+@router.post("/hr/assistant")
+def assistant(request: Request, body: AgentAsk):
+    """HR assistant chat turn: answer, start a reviewed AI job, or propose a confirmable action.
+
+    Business changes are only proposed here; the browser sends the confirmed command to
+    the existing endpoint, so this route never changes candidates, applications or messages.
+    """
+    ctx = context(request)
+    container = request.app.state.container
+    with container.scope() as s:
+        s.candidate.authorize(ctx)  # HR only, before spending a model call.
+    route, source = route_agent(container.ai_gateway, body.text, ctx.trace_id)
+    with container.scope() as s:
+        s.candidate.lock(ctx)
+        return write(
+            request,
+            ctx,
+            s,
+            body.model_dump(),
+            lambda: respond(s, ctx, body.text, route, source, body.focus.model_dump()),
+        )

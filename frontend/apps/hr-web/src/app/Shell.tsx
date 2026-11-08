@@ -35,6 +35,7 @@ import { useSession } from '@recruiter/auth';
 import { qk } from '@recruiter/domain';
 import { usePermission } from '@recruiter/permissions';
 import { DegradeBanner, RequisitionNotices } from '@recruiter/ui-kit';
+import { AssistantDock, AssistantProvider, useAssistant } from '../features/assistant';
 import { useMediaQuery } from '../shared/useMediaQuery';
 
 const { Header, Sider, Content } = Layout;
@@ -52,7 +53,16 @@ function Later({ children }: { children: string }) {
 }
 
 export function Shell() {
+  return (
+    <AssistantProvider>
+      <ShellLayout />
+    </AssistantProvider>
+  );
+}
+
+function ShellLayout() {
   const api = useApi();
+  const assistant = useAssistant();
   const nav = useNavigate();
   const loc = useLocation();
   const session = useSession();
@@ -81,13 +91,20 @@ export function Shell() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const onAssistant = loc.pathname === '/assistant';
+  // 顶栏一句话直接交给 AI 助手：在助手页就地回答，其他页面在右侧面板回答，不打断当前页面
   const sendCommand = () => {
     const text = command.trim();
-    if (!text) return;
+    if (!text || assistant.busy) return;
     setCommand('');
     commandRef.current?.blur();
-    nav('/ai-jobs', { state: { ask: text } });
+    if (!onAssistant) assistant.setOpen(true);
+    assistant.send(text);
   };
+  const { setOpen } = assistant;
+  useEffect(() => {
+    if (onAssistant) setOpen(false);
+  }, [onAssistant, setOpen]);
 
   const first = '/' + (loc.pathname.split('/')[1] || 'workbench');
   const selected = first === '/settings' ? loc.pathname : first;
@@ -120,11 +137,20 @@ export function Shell() {
   const pending = summary?.pendingDecisions;
   const items: MenuItem[] = [
     {
+      key: '/assistant',
+      icon: <RobotOutlined />,
+      label: (
+        <span className="hr-nav-label">
+          AI 助手<span className="hr-nav-ai">对话</span>
+        </span>
+      ),
+    },
+    {
       key: '/workbench',
       icon: <DashboardOutlined />,
       label: (
         <span className="hr-nav-label">
-          AI 工作台
+          工作台
           {!!pending && (
             <span className="hr-nav-count" aria-label={`${pending} 件待决策`}>
               {pending}
@@ -206,7 +232,7 @@ export function Shell() {
           <Input
             className="hr-command"
             prefix={<RobotOutlined aria-hidden style={{ color: 'var(--rc-ai)' }} />}
-            placeholder="让 AI 做件事，或者问个问题，比如“白班客服还差几个人”"
+            placeholder="跟 AI 助手说一句，比如“今天有什么要处理”"
             aria-label="AI 指令栏"
             ref={commandRef}
             value={command}
@@ -220,6 +246,17 @@ export function Shell() {
           />
         )}
         <span className="hr-header-end">
+          {!onAssistant && (
+            <Button
+              className="hr-assistant-btn"
+              type={assistant.open ? 'primary' : 'default'}
+              icon={<RobotOutlined />}
+              aria-pressed={assistant.open}
+              onClick={() => assistant.setOpen(!assistant.open)}
+            >
+              {compact ? '' : 'AI 助手'}
+            </Button>
+          )}
           <Badge count={summary?.handoffs} size="small" offset={[-6, 6]}>
             <Button
               type="text"
@@ -261,6 +298,7 @@ export function Shell() {
           <RequisitionNotices onOpen={(id) => nav(`/requisitions/${id}`)} />
           <Outlet />
         </Content>
+        {!onAssistant && <AssistantDock />}
       </Layout>
     </Layout>
   );

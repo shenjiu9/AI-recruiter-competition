@@ -31,6 +31,58 @@ class Route(StrictModel):
     reason: str = Field(default="", max_length=500)
 
 
+AgentIntent = Literal[
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "overview",
+    "positions",
+    "candidates",
+    "candidate",
+    "interviews",
+    "hires",
+    "reviews",
+    "requisitions",
+    "attach",
+    "advance",
+    "reject",
+    "message",
+    "help",
+    "none",
+]
+
+
+class AgentRoute(StrictModel):
+    """Router (A0) output for the HR assistant: the intent plus verbatim mentions.
+
+    A0 only sees the sanitized sentence. Every mention must be copied from it, so the
+    backend can verify it and never select a record from a guessed name.
+    """
+
+    intent: AgentIntent
+    position: str = Field(default="", max_length=200)
+    candidate: str = Field(default="", max_length=200)
+    keyword: str = Field(default="", max_length=100)
+    content: str = Field(default="", max_length=8000)
+    reason: str = Field(default="", max_length=500)
+
+
+class AgentFocus(StrictModel):
+    """What the previous assistant turn was about, so "推进他" can resolve 他."""
+
+    candidate_id: str = Field(default="", max_length=64)
+    position_id: str = Field(default="", max_length=64)
+
+
+class AgentAsk(StrictModel):
+    text: str = Field(min_length=1, max_length=4000)
+    focus: AgentFocus = Field(default_factory=AgentFocus)
+
+
 class JobCommand(StrictModel):
     expected_version: int = Field(ge=1)
     action: Literal["approve", "reject", "cancel", "retry"]

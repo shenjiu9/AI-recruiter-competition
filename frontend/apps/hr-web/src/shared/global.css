@@ -59,3 +59,7 @@ html { scroll-padding-top: 72px; }
 .hr-page-header h1 { margin: 0; font-size: 24px; font-weight: 500; line-height: 1.35; color: var(--rc-ink); }
 .hr-page-header .sub { margin-top: 4px; max-width: 44em; color: var(--rc-ink-2); }
 .hr-page-header .extra { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* AI 助手入口：导航首项用 AI 色小标签，顶栏按钮可随时打开右侧对话面板 */
+.hr-nav-ai { margin-left: auto; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 18px; background: var(--rc-ai-soft); color: var(--rc-ai); font-weight: 400; }
+.hr-assistant-btn:not(.ant-btn-primary) { color: var(--rc-ai); border-color: color-mix(in srgb, var(--rc-ai) 50%, var(--rc-line)); }
