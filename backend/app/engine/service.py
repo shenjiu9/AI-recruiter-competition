@@ -36,6 +36,15 @@ class Engine:
         self.s.candidate.lock(ctx)
         if job is None:
             raise DomainError("NOT_FOUND", "AI 任务不存在", 404)
+        if job["component"] == "A2":
+            for item in job["inputs"].get("candidates", []):
+                person = self.s.candidate.authorize(ctx, item["candidate_id"])
+                if (
+                    person["id"] != item["candidate_id"]
+                    or person["consent"] != "granted"
+                    or person["do_not_contact"]
+                ):
+                    raise DomainError("CONSENT_REQUIRED", "匹配资料的授权已撤回，结果不再展示", 409)
         if job["component"] == "A6":
             iv = self.s.interview.authorize(ctx, job["object_id"])
             if not self.s.interview.assigned(iv, ctx.principal):
@@ -90,7 +99,11 @@ class Engine:
         return list(reversed(result))
 
     def start(self, ctx, body, key=None):
-        context = build(self.s, ctx, body.component, body.object_id, body.prompt)
+        if body.candidate_ids is not None and body.component != "A2":
+            raise DomainError("VALIDATION_ERROR", "只有简历匹配任务支持候选人名单")
+        context = build(
+            self.s, ctx, body.component, body.object_id, body.prompt, body.candidate_ids
+        )
         config = self.s.automation.current()
         if not config["components"].get(body.component):
             raise DomainError("AI_DISABLED", "请先在自动化配置启用此组件", 409)
@@ -152,7 +165,14 @@ class Engine:
         config = self.s.automation.current()
         if not config["components"].get(job["component"]):
             raise DomainError("AI_DISABLED", "组件已关闭", 409)
-        current = build(self.s, ctx, job["component"], job["object_id"], job["prompt"])
+        candidate_ids = (
+            [c["candidate_id"] for c in job["inputs"].get("candidates", [])]
+            if job["component"] == "A2"
+            else None
+        )
+        current = build(
+            self.s, ctx, job["component"], job["object_id"], job["prompt"], candidate_ids
+        )
         if current["stamp"] != job["stamp"]:
             raise DomainError("AI_CONTEXT_CHANGED", "原文、权限、岗位或策略已变化，请重新生成", 409)
         return ctx

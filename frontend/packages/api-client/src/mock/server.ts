@@ -96,6 +96,7 @@ export function createMockClient(): ApiClient {
     resolvePositionGeneration: backendOnly,
     formDepartments: backendOnly,
     formUsers: backendOnly,
+    formSalaryOptions: backendOnly,
     salaryBands: backendOnly,
     salaryHistory: backendOnly,
     saveSalaryBand: backendOnly,

@@ -84,7 +84,7 @@ export function RequisitionDetailPage() {
                 <Button type="primary">编辑需求</Button>
               </Link>
             )}
-            {owner && req.status === 'in_approval' && (
+            {session?.userId === (req.ownerId || req.creatorId) && req.status === 'in_approval' && (
               <Button
                 loading={action.isPending}
                 onClick={() => action.mutate({ action: 'withdraw' })}
@@ -165,7 +165,18 @@ export function RequisitionDetailPage() {
           type="warning"
           showIcon
           message="终审编制复核中"
-          description="名额不足、冻结或未生效，尚未预占招聘名额。请编制负责人维护编制后，再通过此节点。"
+          description={
+            <>
+              <p>
+                这不是表单填写错误。申请增编只是提出增加名额，不会自动增加年度编制；审批通过前还需确认实际可用名额。
+              </p>
+              <p>
+                请编制负责人到「编制管理」核对 {req.dept}{' '}
+                的本年度计划、已占用名额、生效日期与冻结状态，补足名额后返回这里再次审批。
+              </p>
+              <Link to="/settings/headcount">前往编制管理</Link>
+            </>
+          }
         />
       )}
       {!!req.chain.length && (

@@ -316,6 +316,27 @@ def validate(component, samples, context):
         result = insight(result, context)
     if component == "A2" and not any(k.strip() for k in result["keywords"]):
         reject("搜索建议缺少关键词", "keywords_required")
+    if component == "A2":
+        pool = {c["candidate_id"]: c for c in context.get("candidates", [])}
+        ids = [m["candidate_id"] for m in result["matches"]]
+        if len(ids) != len(set(ids)) or set(ids) != set(pool):
+            reject("匹配结果必须逐一覆盖本次候选人，不得新增或遗漏", "matching_candidates_invalid")
+        matches = []
+        for match in result["matches"]:
+            candidate_id = match.pop("candidate_id")
+            try:
+                checked = one_evaluation(
+                    match, {**context, "sources": pool[candidate_id]["sources"]}
+                )
+            except (ValueError, KeyError, DomainError):
+                reject("匹配结果的岗位要求不完整", "evaluation_invalid")
+            matches.append({"candidate_id": candidate_id, **checked})
+        result["matches"] = sorted(matches, key=lambda m: (-m["score"], m["candidate_id"]))
+        result["scope"] = {
+            "evaluated": len(pool),
+            "limit": 5,
+            "source": "authorized_candidate_pool",
+        }
     if component == "A1":
         from app.modules.position.content import check_language
         from app.modules.position.contracts import PositionCommand

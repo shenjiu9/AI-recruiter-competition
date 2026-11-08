@@ -58,7 +58,7 @@ test('HR 与业务 H5 转交审批、消息和历史联调', async ({ page, requ
   await dialog.getByRole('button', { name: '确认转交' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('请部门负责人代为确认', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: '转交审批', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '转交审批', exact: true })).toBeDisabled();
   await page.screenshot({ path: 'test-results/transfer-desktop.png', fullPage: true });
 
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -84,7 +84,7 @@ test('HR 与业务 H5 转交审批、消息和历史联调', async ({ page, requ
   await page.reload();
   await expect(page.getByRole('button', { name: '通过审批' })).toBeVisible();
   await page.getByRole('button', { name: '通过审批' }).click();
-  await expect(page.getByRole('button', { name: '通过审批' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '通过审批' })).toBeDisabled();
   const final = await (
     await request.get(`${API}/hr/requisitions/${req.id}`, {
       headers: await headers(request, 'hr'),

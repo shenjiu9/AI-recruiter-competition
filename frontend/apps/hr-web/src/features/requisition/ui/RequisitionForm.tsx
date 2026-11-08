@@ -5,6 +5,9 @@ import {
 } from '@ant-design/icons';
 import {
   Alert,
+  AutoComplete,
+  Form,
+  Tooltip,
   App,
   Button,
   Col,
@@ -18,6 +21,7 @@ import {
   Steps,
 } from 'antd';
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useApi, toAppError, type RequisitionDetail } from '@recruiter/api-client';
 import type { FieldValue, PendingDecision } from '@recruiter/domain';
@@ -127,6 +131,26 @@ const PRE_ICON = {
   block: <CloseCircleOutlined style={{ color: 'var(--rc-bad)' }} />,
 };
 
+const CHECK_FIELDS: Record<string, string[]> = {
+  dept: ['dept'],
+  count: ['headcount'],
+  hc: ['headcount', 'hcRequest'],
+  hc_plan: ['headcount'],
+  hc_frozen: ['headcount'],
+  hc_stale: ['headcount'],
+  salary: ['salary'],
+  salary_band: ['salary'],
+  salary_stale: ['salary'],
+  salary_config: ['series', 'level', 'city'],
+  onboard: ['expectedOnboard'],
+  manager: ['reportTo'],
+  visibility: ['visibleTo'],
+  discrimination: ['requirements', 'duties', 'title'],
+  replacement: ['reqType'],
+  position: ['reqType'],
+};
+const targets = (key: string) => CHECK_FIELDS[key] ?? [key.replace(/^length_/, '')];
+
 /** RQ-02：一张表单 + 右侧固定栏。三种填法都落在同一张表单上，字段带来源标签，待决定项就地给选项。 */
 export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
   const api = useApi();
@@ -149,7 +173,7 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
   const [filling, setFilling] = useState(false);
   const [confidential, setConfidential] = useState(initial?.fields.confidential === '1');
   const { message } = App.useApp();
-  const flat = useMemo(
+  const flat = useMemo<Record<string, string>>(
     () => ({
       ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.value])),
       confidential: confidential ? '1' : '',
@@ -157,6 +181,25 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
     [fields, confidential],
   );
   const { precheck, chain } = usePrecheck(flat);
+  const salaryOptions = useQuery({
+    queryKey: ['requisition-salary-options', flat.dept, initial?.id],
+    enabled: !!flat.dept && import.meta.env.VITE_USE_MOCK === 'false',
+    queryFn: async () => {
+      const first = await api.formSalaryOptions(flat.dept!, 1, initial?.id);
+      const rows = [...first.items];
+      for (let page = 2; page <= Math.ceil(first.total / 100); page++) {
+        rows.push(...(await api.formSalaryOptions(flat.dept!, page, initial?.id)).items);
+      }
+      return rows;
+    },
+  });
+  const fieldChecks = (key: string) =>
+    (precheck.data ?? []).filter((p) => p.status !== 'pass' && targets(p.key).includes(key));
+  const locate = (key: string) => {
+    const el = document.getElementById(`f-${targets(key)[0]}`);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el?.focus({ preventScroll: true });
+  };
   const submit = useSubmitRequisition(initial);
   const save = useSaveRequisition(initial);
 
@@ -217,7 +260,40 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
 
   const renderControl = (d: FieldDef) => {
     const v = fields[d.key]?.value ?? '';
-    const common = { id: `f-${d.key}`, 'aria-required': d.required };
+    const common = {
+      id: `f-${d.key}`,
+      'aria-required': d.required,
+      'aria-invalid': fieldChecks(d.key).some((p) => p.status === 'block'),
+      'aria-describedby': `feedback-${d.key}`,
+    };
+    if (['series', 'level', 'city', 'salary'].includes(d.key)) {
+      const values = (salaryOptions.data ?? [])
+        .filter(
+          (row) =>
+            (d.key === 'series' || !flat.series || row.series === flat.series) &&
+            (['series', 'city'].includes(d.key) || !flat.city || row.city === flat.city),
+        )
+        .map((row) =>
+          d.key === 'level'
+            ? row.grade
+            : d.key === 'salary'
+              ? `${row.active!.lower}-${row.active!.upper}K/月×${row.active!.months}`
+              : row[d.key as 'series' | 'city'],
+        );
+      return (
+        <AutoComplete
+          {...common}
+          value={v}
+          style={{ width: '100%' }}
+          options={[...new Set(values)].map((value) => ({ value }))}
+          filterOption={(input, option) =>
+            String(option?.value).toLowerCase().includes(input.toLowerCase())
+          }
+          onChange={(value) => set(d.key, value)}
+          placeholder="选择薪资表配置，或手动填写"
+        />
+      );
+    }
     if (d.key === 'dept')
       return (
         <DepartmentPicker
@@ -337,6 +413,49 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
               {g.title}
             </div>
             <div style={{ padding: '8px 16px 16px' }}>
+              {g.title === '职位信息' && import.meta.env.VITE_USE_MOCK === 'false' && (
+                <div style={{ marginBlock: 12 }}>
+                  <label htmlFor="salary-template">从职级薪资表选择配置</label>
+                  <Select
+                    id="salary-template"
+                    showSearch
+                    optionFilterProp="label"
+                    style={{ width: '100%', marginTop: 6 }}
+                    value={undefined}
+                    disabled={!flat.dept}
+                    loading={salaryOptions.isFetching}
+                    placeholder="选择后填写序列、职级、城市和薪资，可继续修改"
+                    options={(salaryOptions.data ?? []).map((row) => ({
+                      value: row.id,
+                      label: `${row.series} · ${row.grade} · ${row.city} · ${row.active!.lower}-${row.active!.upper}K/月×${row.active!.months}`,
+                    }))}
+                    onChange={(id) => {
+                      const row = salaryOptions.data?.find((r) => r.id === id);
+                      if (!row?.active) return;
+                      setFields((cur) => ({
+                        ...cur,
+                        ...Object.fromEntries(
+                          Object.entries({
+                            series: row.series,
+                            level: row.grade,
+                            city: row.city,
+                            salary: `${row.active!.lower}-${row.active!.upper}K/月×${row.active!.months}`,
+                          }).map(([key, value]) => [key, { value, source: 'edited' as const }]),
+                        ),
+                      }));
+                    }}
+                  />
+                  {salaryOptions.isError && (
+                    <Alert
+                      type="warning"
+                      message="薪资表暂时无法加载，可重试或继续手工填写。"
+                      action={
+                        <Button onClick={() => void salaryOptions.refetch()}>重试薪资表</Button>
+                      }
+                    />
+                  )}
+                </div>
+              )}
               {g.fields.map((d) => {
                 const fv = fields[d.key];
                 const p = pending.find((x) => x.field === d.key);
@@ -360,7 +479,33 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
                         </span>
                       )}
                     </div>
-                    {renderControl(d)}
+                    <Form.Item
+                      style={{ marginBottom: 0 }}
+                      validateStatus={
+                        fieldChecks(d.key).some((p) => p.status === 'block')
+                          ? 'error'
+                          : fieldChecks(d.key).length
+                            ? 'warning'
+                            : undefined
+                      }
+                      help={
+                        <div id={`feedback-${d.key}`}>
+                          {fieldChecks(d.key)
+                            .filter((p) => targets(p.key)[0] === d.key)
+                            .map((p) => (
+                              <div key={p.key}>{p.detail}</div>
+                            ))}
+                        </div>
+                      }
+                    >
+                      <Tooltip
+                        title={fieldChecks(d.key)
+                          .map((p) => p.detail)
+                          .join('；')}
+                      >
+                        <div>{renderControl(d)}</div>
+                      </Tooltip>
+                    </Form.Item>
                     {p && <PendingDecisionField pending={p} onChoose={(o) => choose(p, o)} />}
                   </div>
                 );
@@ -385,6 +530,9 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
                     onChange={(value) => set('hcRequest', String(value ?? 0))}
                     style={{ marginLeft: 12 }}
                   />
+                  <p className="muted">
+                    增编申请不会自动增加可用名额；审批后仍需编制负责人在「编制管理」中落实年度计划。
+                  </p>
                   {fields.reqType?.value === '替补' && (
                     <Alert
                       style={{ marginTop: 12 }}
@@ -466,7 +614,16 @@ export function RequisitionForm({ initial }: { initial?: RequisitionDetail }) {
                   <div>
                     <div>{p.label}</div>
                     <div className="muted" style={{ fontSize: 12 }}>
-                      {p.detail}
+                      {p.status !== 'pass' &&
+                      targets(p.key).some((key) =>
+                        GROUPS.some((g) => g.fields.some((d) => d.key === key)),
+                      ) ? (
+                        <Button type="link" size="small" onClick={() => locate(p.key)}>
+                          定位并修改
+                        </Button>
+                      ) : (
+                        p.detail
+                      )}
                     </div>
                   </div>
                 </div>

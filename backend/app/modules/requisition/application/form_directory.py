@@ -5,6 +5,11 @@ HR_ROLES = WRITE_ROLES - {"hiring_manager"}
 
 
 class FormDirectory:
+    def form_salary_options(self, ctx, dept, page, size, req_id=None):
+        if dept not in {row["id"] for row in self.form_departments(ctx, req_id)}:
+            raise DomainError("OUT_OF_SCOPE", "该部门不在可选范围内", 403)
+        return self.org.form_salary_options(page, size)
+
     def _form_context(self, ctx, req_id):
         if not WRITE_ROLES.intersection(ctx.principal.roles):
             raise DomainError("FORBIDDEN", "当前角色不能使用需求表单目录", 403)

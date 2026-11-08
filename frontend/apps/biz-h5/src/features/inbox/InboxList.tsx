@@ -18,7 +18,9 @@ const KIND = {
 export function InboxList({ items }: { items: BizInboxItem[] }) {
   const nav = useNavigate();
   const act = useInboxAct();
-  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [reviewId, setReviewId] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get('review'),
+  );
   const doAct = (it: BizInboxItem, action: string) => {
     act.mutate({ id: it.id, action, version: it.version, nodeId: it.nodeId });
     track('im_card_action', { card_type: it.kind, action });

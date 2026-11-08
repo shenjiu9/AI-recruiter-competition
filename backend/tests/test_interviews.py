@@ -209,7 +209,9 @@ def test_buffer_and_daily_limits_and_preferences(client, login, fields, containe
     assert action(g, "book", verified=True, start=booked["end"]).status_code == 409
     pref = ok(client.get("/api/v1/biz/interview-availability", headers=f.auth["manager"]))
     payload = {k: v for k, v in pref.items() if k != "version"}
-    payload.update(expected_version=pref["version"], daily_limit=1)
+    # The first offered slot can be late afternoon. Keep the second time within
+    # availability so this assertion tests the daily cap at every wall-clock hour.
+    payload.update(expected_version=pref["version"], daily_limit=1, end_hour=21)
     ok(
         client.post(
             "/api/v1/biz/interview-availability",

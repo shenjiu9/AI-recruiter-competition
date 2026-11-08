@@ -2,7 +2,8 @@ from app.kernel.types import DomainError
 
 
 class QueryFacade:
-    def __init__(self, positions, applications, hiring, decisions, candidates):
+    def __init__(self, positions, applications, hiring, decisions, candidates, requisitions):
+        self.requisitions = requisitions
         self.positions, self.applications, self.hiring, self.decisions, self.candidates = (
             positions,
             applications,
@@ -32,6 +33,7 @@ class QueryFacade:
                 continue
         hires = self.hiring.listing(ctx)
         cards = self.decisions.listing(ctx)
+        approvals = self.requisitions.pending_approvals(ctx)
         return {
             "counts": {
                 "open_positions": sum(p["status"] == "open" for p in positions),
@@ -39,11 +41,12 @@ class QueryFacade:
                 "cards": len(cards),
                 "pending_handoffs": sum(h["can_handover"] for h in hires),
                 "pending_results": sum(h["can_result"] for h in hires),
-                "my_approvals": sum(h["can_approve"] for h in hires),
+                "my_approvals": len(approvals) + sum(h["can_approve"] for h in hires),
             },
             "positions": positions,
             "cards": cards,
             "hires": hires,
+            "requisition_approvals": approvals,
             "ai_enabled": False,
             "ai_activity": [],
             "projection": "transactional_read",

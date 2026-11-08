@@ -114,7 +114,7 @@ def sanitize(value, candidate=None):
     return value
 
 
-def build(s, ctx, component, object_id, prompt=""):
+def build(s, ctx, component, object_id, prompt="", candidate_ids=None):
     s.candidate.lock(ctx)
     if component != "A6":
         s.candidate.require_hr(ctx)
@@ -217,7 +217,7 @@ def build(s, ctx, component, object_id, prompt=""):
             data["questions"] += (
                 s.position.current_profile(position_id).get("must_ask", "").splitlines()
             )
-        if component == "A5":
+        if component in {"A2", "A5"}:
             profile = s.position.current_profile(position_id)
             for key, prefix in (("must", "M"), ("plus", "P"), ("redflag", "R")):
                 for i, line in enumerate(filter(str.strip, profile[key].splitlines())):
@@ -232,6 +232,30 @@ def build(s, ctx, component, object_id, prompt=""):
         if component == "A7":
             data["sources"] = insight_sources(pos, s.application.insight_metrics(position_id))
             data["prompt"] = data["prompt"] or DEFAULT_QUESTION
+    if component == "A2":
+        if candidate_ids is None:
+            candidate_ids = [c["id"] for c in s.candidate.directory(ctx) if c["usable"]][:5]
+        data["candidates"] = []
+        for candidate_id in dict.fromkeys(candidate_ids):
+            person = s.candidate.authorize(ctx, candidate_id)
+            if person["consent"] != "granted" or person["do_not_contact"]:
+                raise DomainError("CONSENT_REQUIRED", "参与匹配的候选人尚未授权或已停止处理", 409)
+            if person["id"] != candidate_id:
+                raise DomainError("AI_CONTEXT_CHANGED", "候选人已合并，请重新选择", 409)
+            sources, remaining = {}, 6000
+            for ref, text in s.candidate.ai_sources(candidate_id).items():
+                value = sanitize(str(text), person)[: min(1500, remaining)]
+                if value.strip():
+                    sources[ref] = value
+                    remaining -= len(value)
+                if remaining <= 0 or len(sources) >= 24:
+                    break
+            data["candidates"].append({"candidate_id": candidate_id, "sources": sources})
+            data["versions"][candidate_id] = person["version"]
+        if data["candidates"] and not any(c["kind"] == "must" for c in data["criteria"]):
+            raise DomainError(
+                "AI_CRITERIA_INVALID", "请先维护岗位生效画像中的职业要求，再匹配简历", 409
+            )
     config = s.automation.current()
     data["policy_versions"] = [config["version"]]
     for position_id in sorted(set(data["positions"])):

@@ -117,9 +117,13 @@ test('共享 HR 编辑 JD，负责人审批发布，经理在手机确认关闭'
   await login(page, 'hr');
   await page.goto(`/positions/${pos.id}`);
   await page.getByRole('button', { name: '共享协作', exact: true }).click();
-  await page.getByLabel('搜索共享 HR').fill('hrbp');
-  await expect(page.locator('#shared-hr option[value="hrbp"]')).toHaveCount(1);
-  await page.locator('#shared-hr').selectOption('hrbp');
+  await page.locator('#shared-hr').click();
+  await page.locator('#shared-hr').fill('hrbp');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('☐ 人力伙伴（hrbp）', { exact: true })
+    .click();
+  await page.locator('#shared-hr').press('Escape');
   await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: '发布审批设置' }).click();
@@ -163,9 +167,13 @@ test('面试配置保留版本、协作留言与岗位列表筛选', async ({ pa
   await page.getByRole('button', { name: '编辑面试流程' }).click();
   await page.getByRole('button', { name: '添加轮次' }).click();
   await page.getByLabel('第 1 轮名称', { exact: true }).fill('业务复试');
-  await page.getByLabel('搜索第 1 轮面试官').fill('manager');
-  await expect(page.locator('#round-0 option[value="manager"]')).toHaveCount(1);
-  await page.locator('#round-0').selectOption('manager');
+  await page.locator('#round-0').click();
+  await page.locator('#round-0').fill('manager');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('☐ 何美玲（manager）', { exact: true })
+    .click();
+  await page.locator('#round-0').press('Escape');
   await page.getByLabel('第 1 轮评价项').fill('问题分析与沟通');
   await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

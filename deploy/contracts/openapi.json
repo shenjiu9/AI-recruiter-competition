@@ -1830,6 +1830,21 @@
       "StartJob": {
         "additionalProperties": false,
         "properties": {
+          "candidate_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Ids"
+          },
           "component": {
             "enum": [
               "A1",
@@ -5514,6 +5529,86 @@
           }
         },
         "summary": "Form Departments",
+        "tags": [
+          "requisitions"
+        ]
+      }
+    },
+    "/api/v1/hr/requisition-form/salary-options": {
+      "get": {
+        "operationId": "form_salary_options_api_v1_hr_requisition_form_salary_options_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dept",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "title": "Dept",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "requisition_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Requisition Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Form Salary Options",
         "tags": [
           "requisitions"
         ]

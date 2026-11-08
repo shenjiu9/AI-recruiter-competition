@@ -64,6 +64,17 @@ class OrgFacade(HeadcountService):
     def salary_list(self, ctx, page, size):
         return self.salary.list(ctx, page, size)
 
+    def form_salary_options(self, page, size):
+        result = self.salary.store.list(self.clock.now().date(), page, size)
+        return {
+            **result,
+            "items": [
+                {k: row[k] for k in ("id", "series", "grade", "city", "active")}
+                for row in result["items"]
+                if row["active"]
+            ],
+        }
+
     def salary_history(self, ctx, band_id):
         return self.salary.history(ctx, band_id)
 

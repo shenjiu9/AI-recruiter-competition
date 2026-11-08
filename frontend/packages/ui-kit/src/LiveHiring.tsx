@@ -561,7 +561,7 @@ function HireForm({
   );
 }
 
-export function LiveWorkbench() {
+export function LiveWorkbench({ business = false }: { business?: boolean }) {
   const api = useApi();
   const q = useLiveData('workbench', () => api.liveWorkbench());
   const metrics = [
@@ -620,6 +620,25 @@ export function LiveWorkbench() {
       </div>
       <div className="rc-dashboard-grid">
         <div className="rc-dashboard-main">
+          <Card
+            title="待我审批的招聘需求"
+            extra={<a href={business ? '/' : '/requisitions'}>查看招聘需求</a>}
+          >
+            {!q.data ? (
+              <Skeleton active />
+            ) : q.data.requisition_approvals?.length ? (
+              q.data.requisition_approvals.map((req) => (
+                <p key={req.id}>
+                  <a href={business ? `/?review=${req.id}` : `/requisitions/${req.id}`}>
+                    {req.title} · 去审批
+                  </a>
+                  <span className="muted"> · {req.dept}</span>
+                </p>
+              ))
+            ) : (
+              <p className="muted">目前没有轮到你处理的招聘需求。</p>
+            )}
+          </Card>
           <Card>
             <div className="rc-section-heading">
               <div>
@@ -639,7 +658,7 @@ export function LiveWorkbench() {
                 <div className="rc-empty-icon">
                   <CheckCircleOutlined />
                 </div>
-                <h3>当前待办已清空</h3>
+                <h3>当前决策卡已处理完</h3>
                 <p>暂无待处理卡片。</p>
                 <span className="muted">新的决策与提醒会出现在这里</span>
               </div>

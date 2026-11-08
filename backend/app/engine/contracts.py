@@ -13,6 +13,7 @@ class StartJob(StrictModel):
     component: Component
     object_id: str = Field(min_length=1, max_length=64)
     prompt: str = Field(default="", max_length=8000)
+    candidate_ids: list[str] | None = Field(default=None, max_length=5)
 
 
 class Ask(StrictModel):
@@ -95,11 +96,16 @@ class Extraction(StrictModel):
     fields: dict[str, ExtractedField] = Field(max_length=20)
 
 
+class CandidateMatch(Evaluation):
+    candidate_id: str = Field(min_length=1, max_length=64)
+
+
 class SearchPlan(StrictModel):
     keywords: list[str] = Field(max_length=30)
     city: list[str] = Field(default_factory=list, max_length=20)
     exclude_keywords: list[str] = Field(default_factory=list, max_length=30)
     explanation: str = Field(max_length=2000)
+    matches: list[CandidateMatch] = Field(default_factory=list, max_length=5)
 
 
 class FeedbackItem(StrictModel):

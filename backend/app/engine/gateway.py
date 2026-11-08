@@ -11,6 +11,7 @@ from app.kernel.types import DomainError
 # Rule codes -> fixed correction guidance for the bounded rewrite. Only these
 # server-authored strings reach the model; never raw errors or rejected text.
 HINTS = {
+    "matching_candidates_invalid": "matches 必须逐一包含输入 candidates 的全部 candidate_id，不得新增、重复或遗漏；无 candidates 时返回空 matches",
     "schema_invalid": "输出必须是符合 Schema 的单个 JSON 对象，字段名和类型不得改变",
     "evaluation_invalid": "items 必须逐项覆盖全部 criteria，id 与输入一致且不重复",
     "json_invalid": "只输出一个 JSON 对象，不要 Markdown 代码围栏或额外说明",

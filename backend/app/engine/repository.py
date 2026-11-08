@@ -33,7 +33,12 @@ class Jobs:
         return self.crypto.decrypt(row.data, key) if row else None
 
     def erase_candidates(self, ids):
-        keys = [j["id"] for j in self.all() if j["candidate_id"] in ids]
+        keys = [
+            j["id"]
+            for j in self.all()
+            if j["candidate_id"] in ids
+            or any(c["candidate_id"] in ids for c in j["inputs"].get("candidates", []))
+        ]
         if keys:
             self.session.execute(delete(JobRecord).where(JobRecord.id.in_(keys)))
 

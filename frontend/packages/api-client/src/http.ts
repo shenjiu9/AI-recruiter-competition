@@ -165,6 +165,10 @@ const routes: Routes = {
     method: 'GET',
     path: `/hr/requisition-form/users?dept=${enc(dept)}&q=${enc(q)}&page=${page}&size=20${selected.map((uid) => `&selected=${enc(uid)}`).join('')}${id ? `&requisition_id=${enc(id)}` : ''}`,
   }),
+  formSalaryOptions: (dept, page, id) => ({
+    method: 'GET',
+    path: `/hr/requisition-form/salary-options?dept=${enc(dept)}&page=${page}&size=100${id ? `&requisition_id=${enc(id)}` : ''}`,
+  }),
   transferCandidates: (id, q, page) => ({
     method: 'GET',
     path: `/hr/requisitions/${enc(id)}/transfer-candidates?q=${enc(q)}&page=${page}&size=20`,

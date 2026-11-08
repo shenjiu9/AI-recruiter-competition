@@ -380,7 +380,7 @@ export function LivePositionDetail() {
           </Link>{' '}
           ·{' '}
           <Link to={`/ai-jobs?component=A2&object=${encodeURIComponent(pos.id)}`}>
-            人才搜索建议
+            简历匹配与人才搜索
           </Link>{' '}
           ·{' '}
           <Link to={`/ai-jobs?component=A7&object=${encodeURIComponent(pos.id)}`}>

@@ -2,6 +2,15 @@ from app.modules.requisition.application.commands import RequisitionCommands
 
 
 class RequisitionFacade(RequisitionCommands):
+    def pending_approvals(self, ctx):
+        return [
+            self.dto(req)
+            for req in self.repo.open_requests()
+            if req.status == "in_approval"
+            and self._visible(ctx, req)
+            and req.chain[req.current_node]["approver_id"] == ctx.principal.user_id
+        ]
+
     def set_position_readers(self, req_id, user_ids):
         from app.kernel.types import DomainError
 

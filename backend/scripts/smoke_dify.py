@@ -30,7 +30,20 @@ def contexts():
     }
     return {
         "A1": {"position": position, "prompt": "生成简洁的职业要求和 JD"},
-        "A2": {"position": position},
+        "A2": {
+            "position": position,
+            "criteria": [{"id": "M1", "text": "Python 后端开发实践", "kind": "must", "weight": 1}],
+            "candidates": [
+                {
+                    "candidate_id": "synthetic-python",
+                    "sources": {"F:experience": "使用 Python 开发后端服务，通过集成测试验证接口。"},
+                },
+                {
+                    "candidate_id": "synthetic-unknown",
+                    "sources": {"F:experience": "使用 Excel 整理行政报表。"},
+                },
+            ],
+        },
         "A3": {"sources": {"F:skills": "Python；PostgreSQL"}},
         "A4": {
             "first_reply": True,
@@ -99,6 +112,16 @@ def main():
                 raise DomainError("SMOKE_EMPTY_EXTRACTION", "Expected synthetic evidence")
             if component == "A5" and output["conclusion"] != "advance":
                 raise DomainError("SMOKE_UNEXPECTED_EVALUATION", "Expected synthetic evidence")
+            if component == "A2":
+                matches = {c["candidate_id"]: c for c in output["matches"]}
+                if (
+                    matches["synthetic-python"]["conclusion"] != "advance"
+                    or matches["synthetic-unknown"]["conclusion"] != "need_info"
+                ):
+                    raise DomainError(
+                        "SMOKE_UNEXPECTED_MATCHING",
+                        "Expected grounded matching and missing-evidence handling",
+                    )
             row["status"] = "passed"
         except DomainError as exc:
             row.update(status="failed", error_code=exc.code)

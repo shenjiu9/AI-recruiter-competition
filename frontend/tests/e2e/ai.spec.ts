@@ -1,6 +1,92 @@
 import { test, expect } from '@playwright/test';
-import { headers, login } from './position-helpers';
+import { headers, login, ready } from './position-helpers';
 const API = 'http://127.0.0.1:8010/api/v1/hr';
+test.use({ actionTimeout: 15_000 });
+
+test('岗位简历匹配展示逐项证据、候选人链接，复核不会自动关联', async ({ page, request }, info) => {
+  const admin = await headers(request, 'admin');
+  const before = await (await request.get(`${API}/automation-live`, { headers: admin })).json();
+  expect(
+    (
+      await request.post(`${API}/automation-live`, {
+        headers: admin,
+        data: {
+          expected_version: before.version,
+          mode: 'manual',
+          components: { ...before.components, A2: true },
+        },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  try {
+    const { pos } = await ready(request, `匹配页面测试-${Date.now()}`);
+    const detail = await (
+      await request.get(`${API}/positions/${pos.id}`, { headers: await headers(request) })
+    ).json();
+    expect(
+      (
+        await request.post(`${API}/positions/${pos.id}/actions`, {
+          headers: await headers(request, 'manager'),
+          data: { action: 'confirm_profile', expected_version: detail.version },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    const name = `匹配合成候选人-${Date.now()}`;
+    const c = (
+      await (
+        await request.post(`${API}/candidates`, {
+          headers: await headers(request),
+          data: { profile: { name, skills: '沟通能力和客户问题解决实践' } },
+        })
+      ).json()
+    ).candidate;
+    expect(
+      (
+        await request.post(`${API}/candidates/${c.id}/actions`, {
+          headers: await headers(request),
+          data: {
+            action: 'consent',
+            expected_version: c.version,
+            granted: true,
+            evidence: '合成测试授权',
+            reason: '测试',
+          },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    await login(page, 'hr', `/ai-jobs?component=A2&object=${pos.id}`);
+    await page.getByRole('combobox', { name: '任务类型', exact: true }).selectOption('A2');
+    await page.getByLabel('选择岗位', { exact: true }).selectOption(pos.id);
+    await page.locator('#matching-candidates').click();
+    await page.locator('#matching-candidates').fill(name);
+    await page.locator('.ant-select-item-option-content').getByText(name, { exact: true }).click();
+    await page.locator('#matching-candidates').press('Escape');
+    await page.getByRole('button', { name: '创建 AI 任务' }).click();
+    await expect(
+      page.getByRole('heading', { name: '简历匹配与人才搜索 · 待人工复核' }),
+    ).toBeVisible();
+    const results = page.getByRole('region', { name: '简历匹配结果' });
+    await expect(results.getByRole('link', { name, exact: true })).toBeVisible();
+    await expect(results).toContainText('沟通能力和客户问题解决实践');
+    await page.getByLabel('处理说明', { exact: true }).fill('已核对合成简历原文');
+    await page.getByLabel('我已核对原文、证据和当前状态').check();
+    await page.getByRole('button', { name: '确认已阅建议' }).click();
+    await expect(
+      page.getByRole('heading', { name: '简历匹配与人才搜索 · 已阅建议' }),
+    ).toBeVisible();
+    const saved = await (
+      await request.get(`${API}/candidates/${c.id}`, { headers: await headers(request) })
+    ).json();
+    expect(saved.applications).toHaveLength(0);
+    await page.screenshot({ path: info.outputPath('resume-matching.png'), fullPage: true });
+  } finally {
+    const latest = await (await request.get(`${API}/automation-live`, { headers: admin })).json();
+    await request.post(`${API}/automation-live`, {
+      headers: await headers(request, 'admin'),
+      data: { expected_version: latest.version, mode: before.mode, components: before.components },
+    });
+  }
+});
 
 test('AI extraction task replays lost response, displays evidence and applies only after review', async ({
   page,

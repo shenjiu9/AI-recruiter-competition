@@ -1,10 +1,11 @@
+import { Select, Tag } from 'antd';
 import { ActionButton } from './controls';
 import { useEffect, useState } from 'react';
 import { useApi, toAppError, type ApiClient } from '@recruiter/api-client';
 
 type Result = Awaited<ReturnType<ApiClient['formUsers']>>;
 
-/** Shared directory selection preserves native select semantics across desktop and mobile. */
+/** Search and select in one control; reporting is single-owner, visibility is multi-select. */
 export function DirectoryPersonPicker({
   id,
   label,
@@ -67,71 +68,80 @@ export function DirectoryPersonPicker({
   const unavailable = !!data && selected.some((u) => !u.available);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <input
+      <Select
+        id={id}
         aria-label={`搜索${label}`}
-        placeholder="搜索姓名或账号"
-        maxLength={100}
-        value={query}
+        showSearch
+        virtual={false}
+        allowClear
+        mode={multiple ? 'multiple' : undefined}
+        placeholder={multiple ? `搜索并勾选${label}（可多选）` : `搜索并选择一位${label}`}
+        value={multiple ? value : value[0] || undefined}
+        searchValue={query}
+        filterOption={false}
+        loading={!!dept && !current}
         disabled={disabled || !dept}
-        style={{ width: '100%', boxSizing: 'border-box', padding: 8 }}
-        onChange={(e) => {
-          setQuery(e.target.value);
+        style={{ width: '100%', minWidth: 0 }}
+        onSearch={(text) => {
+          setQuery(text);
           setPage(1);
         }}
-      />
-      <select
-        id={id}
-        value={multiple ? '' : (value[0] ?? '')}
-        disabled={disabled || !data || !dept || (multiple && value.length >= 50)}
-        style={{ width: '100%', minHeight: 40, padding: 8 }}
-        onChange={(e) => {
-          const uid = e.target.value;
-          if (multiple && !uid) return;
-          onChange(
-            multiple ? [...new Set([...value, uid])] : uid ? [uid] : [],
-            options.get(uid)?.name ?? '',
-          );
+        onChange={(next: string | string[] | undefined) => {
+          const ids = Array.isArray(next) ? next : next ? [next] : [];
+          if (ids.length > 50) return;
+          onChange(ids, options.get(ids[0] ?? '')?.name ?? '');
+          setQuery('');
+          setPage(1);
         }}
-      >
-        <option value="">{multiple ? '添加可见人员' : '请选择人员'}</option>
-        {!multiple && value[0] && !options.has(value[0]) && (
-          <option value={value[0]} disabled>
-            {legacyName || value[0]}（待核验）
-          </option>
+        options={[
+          ...[...options.values()].map((u) => ({ value: u.id, label: `${u.name}（${u.id}）` })),
+          ...selected
+            .filter((u) => !options.has(u.id))
+            .map((u) => ({
+              value: u.id,
+              label: `${u.name ?? legacyName ?? u.id}${data && !u.available ? '（已失效或超出范围）' : '（待核验）'}`,
+              disabled: true,
+            })),
+        ]}
+        optionRender={(option) => (
+          <span>
+            {multiple ? (value.includes(String(option.value)) ? '☑ ' : '☐ ') : ''}
+            {option.label}
+          </span>
         )}
-        {[...options.values()]
-          .filter((u) => !multiple || !value.includes(u.id))
-          .map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}（{u.id}）
-            </option>
-          ))}
-      </select>
+        tagRender={({ value: uid, label: text }) => (
+          <Tag style={{ whiteSpace: 'normal', maxWidth: '100%' }}>
+            <span>{text}</span>
+            {!disabled && (
+              <button
+                type="button"
+                aria-label={`移除 ${selected.find((u) => u.id === uid)?.name ?? uid}`}
+                disabled={disabled}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={() => {
+                  const next = value.filter((id) => id !== uid);
+                  onChange(next, options.get(next[0] ?? '')?.name ?? '');
+                }}
+              >
+                ×
+              </button>
+            )}
+          </Tag>
+        )}
+      />
+      {!multiple && (
+        <span className="muted">
+          {label === '汇报对象'
+            ? '汇报对象只选一位；审批人按审批链依次处理。多人可见请在保密需求的「可见人员」中选择。'
+            : `${label}只选一位。`}
+        </span>
+      )}
       {!value.length && legacyName && (
         <span role="status">历史值：{legacyName}，请重新选择人员</span>
       )}
-      {multiple &&
-        selected.map((u) => (
-          <div key={u.id} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span>
-              {u.name ?? u.id}
-              {data && !u.available ? '（已失效或超出范围）' : ''}
-            </span>
-            <ActionButton
-              type="button"
-              disabled={disabled}
-              onClick={() =>
-                onChange(
-                  value.filter((uid) => uid !== u.id),
-                  '',
-                )
-              }
-              aria-label={`移除 ${u.name ?? u.id}`}
-            >
-              移除
-            </ActionButton>
-          </div>
-        ))}
       {!dept ? (
         <span>请先选择需求部门</span>
       ) : !current ? (

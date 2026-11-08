@@ -1,11 +1,12 @@
 import { ActionButton } from './controls';
+import { Select } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useApi, useReliableWrite, type AiIntent, type AiJob } from '@recruiter/api-client';
 import { useLiveData } from './LiveHiring';
 
 const names: Record<string, string> = {
   A1: '岗位画像与 JD 草稿',
-  A2: '人才搜索建议',
+  A2: '简历匹配与人才搜索',
   A3: '简历字段提取',
   A4: '沟通回复草稿',
   A5: '候选人证据评估',
@@ -246,6 +247,93 @@ function JsonView({ value }: { value: unknown }) {
   );
 }
 
+type ResumeMatch = {
+  candidate_id: string;
+  score: number;
+  coverage: number;
+  conclusion: string;
+  items: {
+    id: string;
+    verdict: string;
+    note: string;
+    evidence: { ref: string; quote: string }[];
+  }[];
+  questions: string[];
+};
+
+function MatchingResults({ job }: { job: AiJob }) {
+  const api = useApi();
+  const matches = (job.output?.matches ?? []) as ResumeMatch[];
+  const people = useLiveData(job.id, async () =>
+    Object.fromEntries(
+      await Promise.all(
+        matches.map(async (m) => {
+          try {
+            return [m.candidate_id, (await api.candidateRecord(m.candidate_id)).profile.name];
+          } catch {
+            return [m.candidate_id, m.candidate_id];
+          }
+        }),
+      ),
+    ),
+  );
+  const criteria = (job.inputs?.criteria ?? []) as { id: string; text: string }[];
+  return (
+    <section aria-label="简历匹配结果">
+      <h3>简历匹配结果 · {matches.length} 人</h3>
+      <p>
+        仅比较本次选中的已授权资料，每次最多 5 人、每份资料最多 6000
+        字。参考分由核验后的岗位条目计算，缺少证据不代表不符合要求，需人工核实。
+      </p>
+      {!matches.length && <p>本次没有可匹配的已授权候选人；下方仅为人才搜索建议。</p>}
+      {matches.map((m) => (
+        <article key={m.candidate_id} style={box}>
+          <h4>
+            <a href={`/candidates/${encodeURIComponent(m.candidate_id)}`}>
+              {people.data?.[m.candidate_id] ?? m.candidate_id}
+            </a>{' '}
+            · 参考分 {m.score}
+          </h4>
+          <p>
+            证据覆盖率 {Math.round(m.coverage * 100)}% ·{' '}
+            {{
+              advance: '现有证据符合必备项',
+              reject: '存在不符合项，需核实',
+              need_info: '资料不足，建议补充',
+              hold: '存在待核实风险',
+            }[m.conclusion] ?? '请核实'}
+          </p>
+          {m.items.map((item) => (
+            <div key={item.id} style={{ marginBlock: 12 }}>
+              <strong>
+                {criteria.find((c) => c.id === item.id)?.text ?? item.id} ·{' '}
+                {{ meet: '有依据支持', not_meet: '有不符合证据', unknown: '待补充证据' }[
+                  item.verdict
+                ] ?? item.verdict}
+              </strong>
+              <p>{item.note}</p>
+              {item.evidence.map((e, i) => (
+                <blockquote key={i}>
+                  {e.quote}
+                  <small>（来源 {e.ref}）</small>
+                </blockquote>
+              ))}
+            </div>
+          ))}
+          {!!m.questions.length && <p>建议追问：{m.questions.join('；')}</p>}
+          <a href={`/candidates/${encodeURIComponent(m.candidate_id)}`}>查看候选人并人工关联岗位</a>
+        </article>
+      ))}
+      <details>
+        <summary>人才搜索建议</summary>
+        <JsonView
+          value={{ keywords: job.output?.keywords, explanation: job.output?.explanation }}
+        />
+      </details>
+    </section>
+  );
+}
+
 function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void }) {
   const api = useApi();
   const [reason, setReason] = useState('');
@@ -268,7 +356,11 @@ function Review({ job, refresh }: { job: AiJob; refresh: (job: AiJob) => void })
       {job.error_code && (
         <p role="status">任务暂未完成：{job.error_code}。请核对配置或重新生成。</p>
       )}
-      <JsonView value={job.output} />
+      {job.component === 'A2' && job.output ? (
+        <MatchingResults key={job.id + job.version} job={job} />
+      ) : (
+        <JsonView value={job.output} />
+      )}
       <details>
         <summary>核对输入与原文证据</summary>
         <JsonView value={job.inputs} />
@@ -503,14 +595,21 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
   const [component, setComponent] = useState(business ? 'A6' : (query.get('component') ?? 'A3'));
   const [objectId, setObjectId] = useState(query.get('object') ?? '');
   const [prompt, setPrompt] = useState('');
+  const [candidateIds, setCandidateIds] = useState<string[]>([]);
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const candidates = useLiveData(JSON.stringify([component, candidateSearch]), async () =>
+    component === 'A2' ? api.candidatePage(1, { query: candidateSearch }) : undefined,
+  );
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState('');
   const health = useLiveData('ai-health', () => api.aiHealth());
   const jobs = useLiveData(String(page), () => api.aiJobs(page));
   const detail = useLiveData(selected, async () => (selected ? api.aiJob(selected) : undefined));
   const start = useReliableWrite(
-    (body: { component: string; object_id: string; prompt: string }, opts) =>
-      api.startAiJob(body, opts),
+    (
+      body: { component: string; object_id: string; prompt: string; candidate_ids?: string[] },
+      opts,
+    ) => api.startAiJob(body, opts),
     (job) => {
       setSelected(job.id);
       void jobs.refresh();
@@ -552,7 +651,12 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
           style={box}
           onSubmit={(e) => {
             e.preventDefault();
-            void start.submit({ component, object_id: objectId, prompt });
+            void start.submit({
+              component,
+              object_id: objectId,
+              prompt,
+              ...(component === 'A2' && candidateIds.length ? { candidate_ids: candidateIds } : {}),
+            });
           }}
         >
           <label>
@@ -591,6 +695,32 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
               onChange={(e) => setPrompt(e.target.value)}
             />
           </label>
+          {component === 'A2' && (
+            <div style={{ marginBlock: 16 }}>
+              <label htmlFor="matching-candidates">选择匹配简历（最多 5 人）</label>
+              <Select
+                id="matching-candidates"
+                mode="multiple"
+                showSearch
+                filterOption={false}
+                style={{ width: '100%' }}
+                value={candidateIds}
+                disabled={start.locked}
+                onSearch={setCandidateSearch}
+                onChange={(ids) => {
+                  if (ids.length <= 5) setCandidateIds(ids);
+                }}
+                options={(candidates.data?.items ?? [])
+                  .filter((c) => c.consent === 'granted' && !c.do_not_contact)
+                  .map((c) => ({ value: c.id, label: c.profile.name }))}
+              />
+              <p>
+                搜索姓名选择本次匹配对象。留空时匹配最近创建的最多 5
+                位可见且已授权候选人；不会自动关联岗位或改变应聘状态。
+              </p>
+              {candidates.error && <p role="alert">{candidates.error}</p>}
+            </div>
+          )}
           <ActionButton type="submit" disabled={start.locked || !configured || !objectId.trim()}>
             创建 AI 任务
           </ActionButton>

@@ -238,7 +238,7 @@ export interface ApiClient {
   aiJobs(page: number): Promise<{ items: AiJob[]; total: number }>;
   aiJob(id: string): Promise<AiJob>;
   startAiJob(
-    body: { component: string; object_id: string; prompt: string },
+    body: { component: string; object_id: string; prompt: string; candidate_ids?: string[] },
     opts: WriteOpts,
   ): Promise<AiJob>;
   /** 一句话发起 AI 任务：后端识别任务类型与对象，唯一匹配时直接创建任务 */
@@ -332,6 +332,14 @@ export interface ApiClient {
     opts: WriteOpts,
   ): Promise<PositionGeneration>;
   formDepartments(requisitionId?: string): Promise<{ id: string; parent_id: string | null }[]>;
+  formSalaryOptions(
+    dept: string,
+    page: number,
+    id?: string,
+  ): Promise<{
+    items: Pick<SalaryBand, 'id' | 'series' | 'grade' | 'city' | 'active'>[];
+    total: number;
+  }>;
   formUsers(
     dept: string,
     query: string,

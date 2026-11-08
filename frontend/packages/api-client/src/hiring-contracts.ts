@@ -82,6 +82,7 @@ export interface CardCommand {
   reason: string;
 }
 export interface LiveWorkbench {
+  requisition_approvals?: { id: string; title: string; dept: string; waitingFor: string }[];
   counts: Record<string, number>;
   cards: LiveCard[];
   hires: LiveHire[];

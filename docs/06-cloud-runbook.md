@@ -43,12 +43,11 @@ A0/A2/A3/A4 使用 deepseek-flash；A1/A5/A6/A7 使用 deepseek-v4-pro。A1–A7
 
 ```bash
 cd /opt/ai-recruiter/app
-/opt/ai-recruiter/venv/bin/python deploy/provision_dify_local.py --sync-drafts --publish
-/opt/ai-recruiter/venv/bin/python deploy/cloud/activate.py
+/opt/ai-recruiter/venv/bin/python deploy/provision_dify_local.py --components A0 A2 --sync-drafts --publish
 docker compose --env-file backend/.env -f deploy/compose.yaml -f deploy/cloud/compose.yaml --profile web up -d
 ```
 
-`activate.py` 设回云端 Docker 地址并启用人工复核策略。新环境首次安装模型还需 `--install-model`，待插件安装完成后运行 `--configure-model --publish`。
+同步工具保留已有云端地址和未选中组件的密钥，备份旧 DSL，并保持匿名 WebApp 关闭。`activate.py` 仅首次初始化时使用，会设回云端 Docker 地址并启用人工复核策略。新环境首次安装模型还需 `--install-model`，待插件安装完成后运行 `--configure-model --publish`。
 
 ## 验证
 

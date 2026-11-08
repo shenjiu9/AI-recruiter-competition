@@ -23,6 +23,19 @@ router = APIRouter(prefix="/api/v1", tags=["requisitions"])
 Context = Annotated[Ctx, Depends(context)]
 
 
+@router.get("/hr/requisition-form/salary-options")
+def form_salary_options(
+    request: Request,
+    ctx: Context,
+    dept: str = Query(max_length=100),
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=100),
+    requisition_id: str | None = None,
+):
+    with request.app.state.container.scope() as services:
+        return services.requisition.form_salary_options(ctx, dept, page, size, requisition_id)
+
+
 @router.get("/hr/requisition-form/departments")
 def form_departments(request: Request, ctx: Context, requisition_id: str | None = None):
     with request.app.state.container.scope() as services:

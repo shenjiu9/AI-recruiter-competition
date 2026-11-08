@@ -5,5 +5,5 @@ export function HiringPage() {
   return id ? <HiringDetail id={id} /> : <HiringList />;
 }
 export function WorkbenchPage() {
-  return <LiveWorkbench />;
+  return <LiveWorkbench business />;
 }

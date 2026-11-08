@@ -8,6 +8,7 @@ import argparse
 import base64
 import json
 import secrets
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
@@ -21,6 +22,7 @@ def main():
     parser.add_argument("--install-model", action="store_true")
     parser.add_argument("--configure-model", action="store_true")
     parser.add_argument("--sync-drafts", action="store_true")
+    parser.add_argument("--components", nargs="+", choices=[f"A{i}" for i in range(8)])
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     path = root / "backend" / ".env.dify-local"
@@ -64,7 +66,9 @@ def main():
             "/login",
             json={
                 "email": values["DIFY_ADMIN_EMAIL"],
-                "password": base64.b64encode(values["DIFY_ADMIN_PASSWORD"].encode()).decode(),
+                "password": base64.b64encode(
+                    values["DIFY_ADMIN_PASSWORD"].encode()
+                ).decode(),
                 "remember_me": True,
             },
         )
@@ -108,8 +112,27 @@ def main():
         keys = {}
         for file in sorted((root / "deploy" / "dify" / "workflows").glob("A*.yml")):
             component = file.stem
+            if args.components and component not in args.components:
+                continue
             app_id = values.get("DIFY_APP_" + component)
             if not app_id or args.sync_drafts:
+                if app_id:
+                    # Keep the previous DSL private so a manually edited workflow is recoverable.
+                    backup = (
+                        root
+                        / "backups"
+                        / "dify-workflows"
+                        / datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+                    )
+                    backup.mkdir(parents=True, exist_ok=True)
+                    exported = call(
+                        "GET",
+                        f"/apps/{app_id}/export",
+                        params={"include_secret": "false"},
+                    )
+                    saved = backup / f"{component}.yml"
+                    saved.write_text(exported["data"], encoding="utf-8")
+                    saved.chmod(0o600)
                 result = call(
                     "POST",
                     "/apps/imports",
@@ -120,11 +143,15 @@ def main():
                     },
                 )
                 if result["status"] == "pending":
-                    result = call("POST", "/apps/imports/" + result["id"] + "/confirm", json={})
+                    result = call(
+                        "POST", "/apps/imports/" + result["id"] + "/confirm", json={}
+                    )
                 if result["status"] not in {"completed", "completed-with-warnings"}:
                     raise SystemExit("Dify import needs attention: " + component)
                 app_id = result["app_id"]
                 set_key(path, "DIFY_APP_" + component, app_id)
+            # Workflows run through the authenticated backend, never an anonymous WebApp.
+            call("POST", f"/apps/{app_id}/site-enable", json={"enable_site": False})
             print(component + " workflow draft available")
             if args.publish:
                 if not dotenv_values(path).get("DIFY_MODEL_KEY_FINGERPRINT"):
@@ -140,13 +167,23 @@ def main():
                     },
                 )
                 existing = call("GET", f"/apps/{app_id}/api-keys")["data"]
-                key = existing[0] if existing else call("POST", f"/apps/{app_id}/api-keys", json={})
+                key = (
+                    existing[0]
+                    if existing
+                    else call("POST", f"/apps/{app_id}/api-keys", json={})
+                )
                 keys[component] = key["token"]
         if keys:
             env = root / "backend" / ".env"
-            set_key(env, "DIFY_API_KEYS", json.dumps(keys))
-            set_key(env, "DIFY_BASE_URL", "http://localhost:8080/v1")
-            set_key(env, "DIFY_DOCKER_BASE_URL", "http://host.docker.internal:8080/v1")
+            current = dotenv_values(env)
+            merged = json.loads(current.get("DIFY_API_KEYS") or "{}") | keys
+            set_key(env, "DIFY_API_KEYS", json.dumps(merged))
+            if not current.get("DIFY_BASE_URL"):
+                set_key(env, "DIFY_BASE_URL", "http://localhost:8080/v1")
+            if not current.get("DIFY_DOCKER_BASE_URL"):
+                set_key(
+                    env, "DIFY_DOCKER_BASE_URL", "http://host.docker.internal:8080/v1"
+                )
             print(
                 "Published workflow API keys saved to backend/.env; component policy remains unchanged"
             )

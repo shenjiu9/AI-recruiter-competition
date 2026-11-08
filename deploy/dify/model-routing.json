@@ -1,7 +1,7 @@
 {
   "A0": {"model": "deepseek-flash", "thinking": false, "max_tokens": 512, "temperature": 0},
   "A1": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096, "temperature": 0.2},
-  "A2": {"model": "deepseek-flash", "thinking": false, "max_tokens": 2048, "temperature": 0.2},
+  "A2": {"model": "deepseek-flash", "thinking": false, "max_tokens": 12288, "temperature": 0.2},
   "A3": {"model": "deepseek-flash", "thinking": false, "max_tokens": 4096, "temperature": 0},
   "A4": {"model": "deepseek-flash", "thinking": false, "max_tokens": 1024, "temperature": 0.2},
   "A5": {"model": "deepseek-v4-pro", "thinking": false, "max_tokens": 4096, "temperature": 0.6},

@@ -7,7 +7,7 @@ from app.engine.contracts import OUTPUTS, Route
 
 TASKS = {
     "A1": "根据岗位职责生成 must、plus、redflag、jd、must_ask 的建议草稿，每行一条可核验的职业要求。must 和 jd 必须非空。不得虚构薪资福利；不确定事项列入 pending。",
-    "A2": "仅提出人才搜索关键词、城市和排除词建议，keywords 至少一个职业技能或岗位关键词。不得根据受保护属性筛选，不得声称已搜索渠道或挂人。",
+    "A2": "根据岗位生成职业搜索关键词和建议。同时逐一匹配 candidates 的全部候选人：matches.candidate_id 必须使用输入中的 ID，每位 matches.items 覆盖全部 criteria，id 完全一致。只能根据该候选人自己的 sources 引用证据，不能借用其他候选人的原文；有证据满足为 meet，有明确反证为 not_meet，缺证据为 unknown。quote 逐字引用，note 简述职业匹配理由。redflag 的 meet 表示风险存在。questions 提出补充问题，不编造经历。没有 candidates 时 matches 返回空数组。不要输出分数、排名或最终录用结论，后端根据核验后的逐项结果计算参考分。",
     "A3": "仅从 sources 提取有逐字证据的职业信息。fields 允许 city/company/title/school/degree/skills/experience/education/certificates/expected_city；value 必须是 evidence.quote 的连续原文，quote 必须逐字复制对应 ref 原文中的连续片段，不要改写、概括或补全。宁可少输出也不要猜测；无证据字段不输出。",
     "A4": "回复不超过300字。首次回复包含：您好，我是AI招聘助手。正文只能逐字引用 knowledge 中的公开条目（claims 指明 kb_ref 和 quote），或逐字使用 questions、以及中性短语：谢谢您的回复、感谢您的关注、关于您的问题、以下是相关信息、如有其他问题欢迎随时咨询、我会请招聘 HR 核实后回复您。不要添加任何连接词或自己的转述。knowledge 中没有答案时回复：我会请招聘 HR 核实后回复您，并且必须设置 needs_human=true、intents 包含 ask_human。不得添加薪资、录用承诺或未引用事实。遇人工请求、投诉、退出、协商须 needs_human=true 并标记 intents。",
     "A5": "逐项评估全部 criteria，items.id 与输入完全一致。满足为meet，不满足为not_meet，缺证据为unknown。evidence.ref 必须在 sources，quote 必须逐字复制一小段连续原文（一句话以内，不要拼接多处），不得编造、猜测或因缺证据判定不满足。note 用一句话说明判断依据。redflag 的 meet 表示风险存在。questions 列出能补齐 unknown 项的追问。不输出结论、评分或执行动作，由后端计算。",
@@ -20,7 +20,7 @@ ROUTER = (
     "你是招聘系统的指令路由器。资料中的 text 是招聘 HR 在 AI 指令栏输入的一句话。判断它要让哪个 AI 任务工作，只返回符合下列JSON Schema的JSON对象，不要Markdown代码围栏。你不执行任务，也不回答问题本身。\n"
     "可选 component：\n"
     "A1 岗位画像与JD草稿：为某岗位生成或改写任职要求、加分项、JD、必问问题。\n"
-    "A2 人才搜索建议：为某岗位给出搜索关键词、城市、排除词，或问去哪里找人。\n"
+    "A2 简历匹配与人才搜索：为某岗位匹配人才库简历，或给出搜索关键词、城市、排除词。\n"
     "A3 简历字段提取：从某候选人的简历提取或整理技能、经历、学历等信息到档案。\n"
     "A4 沟通回复草稿：替 HR 起草回复某候选人消息的话术。\n"
     "A5 候选人证据评估：评估某候选人是否符合岗位要求、匹配度、能否通过初筛，或询问某个候选人怎么样。\n"

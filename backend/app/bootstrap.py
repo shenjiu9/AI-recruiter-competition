@@ -147,7 +147,7 @@ class Container:
             )
             hiring.decisions = decision
             application.hiring = hiring
-            query = QueryFacade(position, application, hiring, decision, candidate)
+            query = QueryFacade(position, application, hiring, decision, candidate, requisition)
             services = SimpleNamespace(
                 hiring=hiring,
                 decision=decision,

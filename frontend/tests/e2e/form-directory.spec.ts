@@ -61,15 +61,30 @@ test('真实目录：新部门、同名人员、分页搜索、保密名单保�
   await page.locator('#f-dept').press('ArrowDown');
   await page.locator('.ant-select-tree-title').getByText('客服测试小组', { exact: true }).click();
   await page.getByRole('button', { name: '下一页人员', exact: true }).click();
-  await expect(page.locator('#f-reportTo option[value="z-person-24"]')).toHaveCount(1);
-  await page.getByLabel('搜索汇报对象').fill('同名测试员工');
-  await expect(page.locator('#f-reportTo option')).toHaveCount(3);
-  await page.locator('#f-reportTo').selectOption('z-person-01');
+  await page.locator('#f-reportTo').click();
+  await expect(
+    page
+      .locator('.ant-select-item-option-content')
+      .getByText('目录测试员工24（z-person-24）', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('combobox', { name: '搜索汇报对象', exact: true }).fill('同名测试员工');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('同名测试员工（z-person-01）', { exact: true })
+    .click();
   await page.locator('#f-confidential').click();
-  await page.getByLabel('搜索可见人员').fill('z-person-02');
-  await page.locator('#f-visibleTo').selectOption('z-person-02');
-  await page.getByLabel('搜索可见人员').fill('人力伙伴');
-  await page.locator('#f-visibleTo').selectOption('hrbp');
+  await page.locator('#f-visibleTo').click();
+  await page.getByRole('combobox', { name: '搜索可见人员', exact: true }).fill('z-person-02');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('☐ 目录测试员工2（z-person-02）', { exact: true })
+    .click();
+  await page.getByRole('combobox', { name: '搜索可见人员', exact: true }).fill('人力伙伴');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('☐ 人力伙伴（hrbp）', { exact: true })
+    .click();
+  await page.locator('#f-visibleTo').press('Escape');
   await expect(page.getByRole('button', { name: '移除 目录测试员工2' })).toBeVisible();
   await page.getByRole('button', { name: '保存草稿并返回' }).click();
   await expect(page.getByRole('link', { name: req.title, exact: true })).toBeVisible();
@@ -130,12 +145,15 @@ for (const client of ['HR', 'H5']) {
         .click();
     await expect(page.getByText('目录临时不可用', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: '重试人员目录' }).click();
-    await page.getByLabel('搜索汇报对象').fill('同名测试员工');
-    await page.locator('#confirm-reportTo').selectOption('z-person-00');
+    await page.getByRole('combobox', { name: '搜索汇报对象', exact: true }).fill('同名测试员工');
+    await page
+      .locator('.ant-select-item-option-content')
+      .getByText('同名测试员工（z-person-00）', { exact: true })
+      .click();
     await expect(page.getByText('汇报对象：何美玲 → 同名测试员工', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '确认并继续审批' })).toBeEnabled();
     await page
-      .getByLabel('搜索汇报对象')
+      .getByRole('combobox', { name: '搜索汇报对象', exact: true })
       .evaluate((element) => element.scrollIntoView({ block: 'center' }));
     await page.screenshot({
       path: `test-results/form-directory-confirm-${client}.png`,

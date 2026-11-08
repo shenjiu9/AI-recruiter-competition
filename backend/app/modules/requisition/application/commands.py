@@ -457,7 +457,8 @@ class RequisitionCommands(FormDirectory, TransferCommands):
 
     def withdraw(self, ctx, req_id, expected_version):
         req = self.get_entity(ctx, req_id)
-        self._owner(ctx, req)
+        if ctx.principal.user_id != (req.owner_id or req.creator_id):
+            raise DomainError("FORBIDDEN", "只有当前需求负责人可以撤回；审批人请使用驳回", 403)
         self._version(req, expected_version)
         old = self._snapshot(req)
         req.status = transition(req.status, "withdraw")

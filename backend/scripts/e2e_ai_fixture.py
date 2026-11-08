@@ -21,6 +21,37 @@ class BrowserAiGateway:
                 if value
                 else {"fields": {}}
             )
+        elif component == "A2":
+            output = {
+                "keywords": ["沟通"],
+                "explanation": "浏览器测试的确定性模型边界",
+                "matches": [
+                    {
+                        "candidate_id": candidate["candidate_id"],
+                        "self_confidence": 0.8,
+                        "items": [
+                            {
+                                "id": criterion["id"],
+                                "verdict": "meet"
+                                if candidate["sources"].get("F:skills")
+                                else "unknown",
+                                "note": "技能证据",
+                                "evidence": [
+                                    {
+                                        "source": "profile",
+                                        "ref": "F:skills",
+                                        "quote": candidate["sources"]["F:skills"],
+                                    }
+                                ]
+                                if candidate["sources"].get("F:skills")
+                                else [],
+                            }
+                            for criterion in inputs["criteria"]
+                        ],
+                    }
+                    for candidate in inputs["candidates"]
+                ],
+            }
         elif component == "A6":
             ref, value = next(iter(inputs["sources"].items()))
             output = {

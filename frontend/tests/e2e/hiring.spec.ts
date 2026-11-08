@@ -18,7 +18,11 @@ test('HR prepares, manager decides with retry, business approves, HR hands over 
   await page
     .getByLabel('预计入职日期')
     .fill(new Date(Date.now() + 35 * 86400000).toISOString().slice(0, 10));
-  await page.getByLabel('移交负责人', { exact: true }).selectOption('hr');
+  await page.getByRole('combobox', { name: '搜索移交负责人', exact: true }).fill('林悦');
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('林悦（hr）', { exact: true })
+    .click();
   await page.getByLabel('核实证据或移交凭证').fill('候选人书面确认');
   await page.getByLabel(confirm).check();
   await page.getByRole('button', { name: '保存核实信息' }).click();
