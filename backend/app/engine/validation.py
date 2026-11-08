@@ -324,6 +324,12 @@ def validate(component, samples, context):
         matches = []
         for match in result["matches"]:
             candidate_id = match.pop("candidate_id")
+            # A quotation proves the text exists, not that a model's negative
+            # inference follows from it. Short resume batches cannot establish
+            # absence of a skill: all negative A2 findings require human follow-up.
+            for item in match["items"]:
+                if item["verdict"] == "not_meet":
+                    item.update(verdict="unknown", note="模型提示待人工核实：" + item["note"])
             try:
                 checked = one_evaluation(
                     match, {**context, "sources": pool[candidate_id]["sources"]}

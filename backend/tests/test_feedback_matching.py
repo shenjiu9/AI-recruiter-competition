@@ -172,6 +172,14 @@ def test_matching_cannot_invent_candidates_or_borrow_other_resumes():
     }
     result = validate("A2", [output], context)
     assert result["matches"][1]["items"][0]["verdict"] == "unknown"
+    # A real provider quoted Excel correctly but inferred absence of Python.
+    # Grounding alone must not turn incomplete information into a rejection.
+    item = output["matches"][1]["items"][0]
+    item.update(verdict="not_meet", note="只描述 Excel，未体现 Python")
+    item["evidence"][0]["quote"] = "Excel"
+    result = validate("A2", [output], context)
+    assert result["matches"][1]["conclusion"] == "need_info"
+    assert result["matches"][1]["coverage"] == 0
     output["matches"][1]["candidate_id"] = "invented"
     with pytest.raises(DomainError):
         validate("A2", [output], context)
