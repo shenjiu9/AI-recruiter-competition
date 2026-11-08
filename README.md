@@ -1,5 +1,53 @@
 # AI 招聘官系统
 
+## Vultr Agent Rush submission — NeuroMakers
+
+**AI Recruiter: Hiring Workflows with Human Review**
+
+Entry for **Challenge 2: Powering the Future of Work**. This repository implements a recruitment workflow from approved headcount to candidate handover, with AI suggestions that people can inspect and review.
+
+### Try the deployed prototype
+
+- HR workspace: https://hr.45-76-191-78.sslip.io/
+- Manager / business workspace: https://biz.45-76-191-78.sslip.io/
+- Candidate portal: https://candidate.45-76-191-78.sslip.io/ (requires a candidate-specific invitation link)
+- The application uses a development login gate. Credentials and candidate invitation links are not published in this repository. The submitted video demonstrates the product using synthetic records.
+- Competition snapshot: the `submission/vultr-agent-rush` branch contains the deployed application code from `ec8b830` plus submission documentation. Later changes on `main` are not necessarily deployed.
+
+### What the product does
+
+A manager submits a hiring request. Approval and headcount checks produce a position. HR reviews candidate consent and evidence, requests AI-assisted resume matching, coordinates conversations and interviews, and routes hiring decisions and handover through the responsible people. An assistant provides natural-language access to progress and reviewed AI tasks.
+
+Dify components cover job descriptions (A1), talent matching (A2), resume extraction (A3), reply drafting (A4), evidence assessment (A5), interview notes (A6), and recruitment insights (A7). DeepSeek provides model inference. The backend validates outputs and owns business permissions, workflow transitions, optimistic version checks, idempotency and audit records. Hiring and salary decisions remain human responsibilities. A matching reference score is not a hiring decision: absent evidence remains unknown and requires follow-up.
+
+### How we use Vultr
+
+A **Vultr Cloud Compute VM in Singapore** hosts the live web applications and backend. Docker Compose runs the HR web, business H5, candidate H5, FastAPI service, PostgreSQL and Redis. Self-hosted Dify runs on the same VM and communicates with the application over an internal Docker network. An HTTPS reverse proxy fronts the web services; application and database ports bind to loopback rather than public interfaces.
+
+```text
+HR / manager / candidate browsers
+              |
+         HTTPS proxy
+              |
+  React web apps + FastAPI on Vultr
+       |                |
+  PostgreSQL / Redis    Dify -> DeepSeek API
+       |
+  workflow state, consent, approvals and audit
+```
+
+Vultr is the backend execution and persistence platform, not only static hosting. This is a Challenge 2 enterprise workflow submission. It does not claim to implement a general code-execution sandbox or use Vultr Serverless Inference.
+
+### Run and inspect
+
+See [backend setup](backend/README.md), [frontend setup](frontend/README.md), [local operations](docs/05-local-runbook.md), and [cloud deployment](deploy/cloud/). Supply your own environment values and model credentials. Never commit `.env` files, model keys, database backups or invitation tokens.
+
+Validation includes backend domain/API tests and Playwright browser tests. The recorded prototype uses synthetic data and is not a production-scale or real-customer ROI benchmark. Feishu, Tencent Meeting, SMS/email and external recruiting-channel integrations are reserved because service credentials have not been configured. Complete AI-led interviews and remaining product scope are tracked in the delivery plan. Known issues in the newer assistant tools on main are under review and excluded from the demonstrated deployment.
+
+See [the submission notes](docs/submission/README.md) for the demo route and scope.
+
+---
+
 AI 招聘官系统的需求、MVP 规划与详细实现设计。三份文档从上到下逐层细化：PRD 定义要做什么，MVP 规划定义先做哪一段、用什么技术，详细实现文档定义模块、函数与工程规范。
 
 | 文档 | 内容 | 适合谁读 |
