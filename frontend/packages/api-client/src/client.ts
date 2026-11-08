@@ -243,6 +243,8 @@ export interface ApiClient {
   ): Promise<AiJob>;
   /** 一句话发起 AI 任务：后端识别任务类型与对象，唯一匹配时直接创建任务 */
   askAi(body: { text: string }, opts: WriteOpts): Promise<AiIntent>;
+  /** AI 招聘助手对话：回答查询、发起 AI 任务，或给出待 HR 确认的操作卡片（本身不改业务数据） */
+  assistant(body: AssistantAsk, opts: WriteOpts): Promise<AssistantReply>;
   aiJobCommand(
     id: string,
     body: { action: string; expected_version: number; reason: string; verified: boolean },
@@ -574,6 +576,72 @@ export interface AiIntent {
   reason: string;
   examples: string[];
   error_code?: string;
+}
+
+export interface AssistantFocus {
+  candidate_id?: string;
+  candidate_name?: string;
+  position_id?: string;
+  position_name?: string;
+}
+export interface AssistantAsk {
+  text: string;
+  focus: { candidate_id: string; position_id: string };
+}
+/** 助手提出、由 HR 确认后调用现有接口执行的操作 */
+export type AssistantAction =
+  | { kind: 'attach'; candidate_id: string; position_id: string }
+  | { kind: 'advance'; application_id: string; expected_version: number; target_stage: string }
+  | { kind: 'reject'; application_id: string; expected_version: number }
+  | { kind: 'message'; candidate_id: string; application_ids: string[]; content: string }
+  | { kind: 'card'; card_id: string; expected_version: number; option: string };
+export interface AssistantItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  href: string;
+  tag: string;
+  tone: '' | 'brand' | 'ai' | 'warning' | 'danger' | 'success';
+  ask?: string;
+  job_id?: string;
+  actions?: { label: string; action: AssistantAction; danger: boolean }[];
+}
+export type AssistantBlock =
+  | {
+      type: 'metrics';
+      title?: string;
+      href?: string;
+      items: { label: string; value: number | string; tone?: string }[];
+    }
+  | { type: 'funnel'; items: { label: string; value: number }[] }
+  | { type: 'list'; title: string; items: AssistantItem[]; more_href?: string }
+  | {
+      type: 'profile';
+      title: string;
+      href: string;
+      tags: string[];
+      items: { label: string; value: string }[];
+    }
+  | {
+      type: 'confirm';
+      title: string;
+      lines: string[];
+      quote?: string;
+      action: AssistantAction;
+      reason?: string;
+      danger?: boolean;
+    }
+  | { type: 'job'; job: AiJob }
+  | { type: 'choose'; component: string; prompt: string; options: { id: string; label: string }[] };
+export interface AssistantReply {
+  intent: string;
+  router: 'model' | 'rules';
+  reason: string;
+  reply: string;
+  blocks: AssistantBlock[];
+  suggestions: string[];
+  focus: AssistantFocus;
 }
 
 export interface ApiConfig {

@@ -21,3 +21,5 @@ export { AiActivityItem } from './components/AiActivityItem';
 export { EmptyState } from './components/EmptyState';
 export { ApprovalTransfer } from './ApprovalTransfer';
 export { RequisitionNotices, TRANSFER_ACTIONS } from './RequisitionNotices';
+
+export { MatchingResults } from './AiJobs';

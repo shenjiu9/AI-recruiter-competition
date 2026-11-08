@@ -1,6 +1,45 @@
 {
   "components": {
     "schemas": {
+      "AgentAsk": {
+        "additionalProperties": false,
+        "properties": {
+          "focus": {
+            "$ref": "#/components/schemas/AgentFocus"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "AgentAsk",
+        "type": "object"
+      },
+      "AgentFocus": {
+        "additionalProperties": false,
+        "description": "What the previous assistant turn was about, so \"推进他\" can resolve 他.",
+        "properties": {
+          "candidate_id": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "position_id": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Position Id",
+            "type": "string"
+          }
+        },
+        "title": "AgentFocus",
+        "type": "object"
+      },
       "ApplicationCommand": {
         "additionalProperties": false,
         "properties": {
@@ -4069,6 +4108,46 @@
         "summary": "Application Action",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/hr/assistant": {
+      "post": {
+        "description": "HR assistant chat turn: answer, start a reviewed AI job, or propose a confirmable action.\n\nBusiness changes are only proposed here; the browser sends the confirmed command to\nthe existing endpoint, so this route never changes candidates, applications or messages.",
+        "operationId": "assistant_api_v1_hr_assistant_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentAsk"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assistant",
+        "tags": [
+          "ai-tasks"
         ]
       }
     },

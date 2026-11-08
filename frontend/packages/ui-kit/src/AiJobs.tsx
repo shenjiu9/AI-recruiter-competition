@@ -261,7 +261,7 @@ type ResumeMatch = {
   questions: string[];
 };
 
-function MatchingResults({ job }: { job: AiJob }) {
+export function MatchingResults({ job }: { job: AiJob }) {
   const api = useApi();
   const matches = (job.output?.matches ?? []) as ResumeMatch[];
   const people = useLiveData(job.id, async () =>
@@ -601,7 +601,7 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
     component === 'A2' ? api.candidatePage(1, { query: candidateSearch }) : undefined,
   );
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(query.get('job') ?? '');
   const health = useLiveData('ai-health', () => api.aiHealth());
   const jobs = useLiveData(String(page), () => api.aiJobs(page));
   const detail = useLiveData(selected, async () => (selected ? api.aiJob(selected) : undefined));

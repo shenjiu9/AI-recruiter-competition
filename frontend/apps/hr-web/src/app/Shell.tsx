@@ -26,12 +26,23 @@ import { useSession } from '@recruiter/auth';
 import { qk } from '@recruiter/domain';
 import { Can } from '@recruiter/permissions';
 import { DegradeBanner, RequisitionNotices } from '@recruiter/ui-kit';
+import { AssistantDock, AssistantProvider, useAssistant } from '../features/assistant';
 import { useMediaQuery } from '../shared/useMediaQuery';
 import './shell.css';
 
 const { Sider, Content } = Layout;
 export function Shell() {
+  const session = useSession();
+  return (
+    <AssistantProvider key={session?.userId ?? 'anonymous'}>
+      <ShellLayout />
+    </AssistantProvider>
+  );
+}
+
+function ShellLayout() {
   const api = useApi();
+  const assistant = useAssistant();
   const nav = useNavigate();
   const loc = useLocation();
   const session = useSession();
@@ -50,13 +61,21 @@ export function Shell() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  const onAssistant = loc.pathname === '/assistant';
+  // 顶栏一句话直接交给 AI 助手：在助手页就地回答，其他页面在右侧面板回答，不打断当前页面
   const sendCommand = () => {
     const text = command.trim();
-    if (!text) return;
+    if (!text || assistant.busy) return;
     setCommand('');
     commandRef.current?.blur();
-    nav('/ai-jobs', { state: { ask: text } });
+    if (!onAssistant) assistant.setOpen(true);
+    assistant.send(text);
   };
+  const { setOpen } = assistant;
+  useEffect(() => {
+    if (onAssistant) setOpen(false);
+  }, [onAssistant, setOpen]);
   useEffect(() => setDrawerOpen(false), [loc.pathname]);
   const { data: summary } = useQuery({
     queryKey: qk.workbench.summary(),
@@ -65,6 +84,7 @@ export function Shell() {
   });
   const selected = '/' + (loc.pathname.split('/')[1] ?? 'workbench');
   const items = [
+    { key: '/assistant', icon: <ThunderboltOutlined />, label: 'AI 招聘助手' },
     { key: '/workbench', icon: <DashboardOutlined />, label: 'AI 工作台' },
     { key: '/requisitions', icon: <FileAddOutlined />, label: '招聘需求管理' },
     { key: '/positions', icon: <IdcardOutlined />, label: '岗位管理' },
@@ -88,7 +108,7 @@ export function Shell() {
   ];
   const navigation = (
     <>
-      <a className="sidebar-brand" href="/workbench">
+      <a className="sidebar-brand" href="/assistant">
         <span className="brand-mark">
           r<span className="sr-only">.</span>
         </span>
@@ -218,7 +238,11 @@ export function Shell() {
             className="app-ai-entry"
             aria-label="AI 助手"
             icon={<ThunderboltOutlined />}
-            onClick={() => nav('/ai-jobs')}
+            aria-pressed={assistant.open}
+            onClick={() => {
+              if (onAssistant) document.getElementById('assistant-input')?.focus();
+              else assistant.setOpen(!assistant.open);
+            }}
           >
             <span className="entry-copy">AI 助手</span>
           </Button>
@@ -245,6 +269,7 @@ export function Shell() {
           />
           <Outlet />
         </Content>
+        {!onAssistant && <AssistantDock />}
       </Layout>
     </Layout>
   );

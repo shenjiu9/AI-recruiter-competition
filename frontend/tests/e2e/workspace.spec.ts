@@ -67,7 +67,9 @@ test('workspace shows real totals, searches candidates and opens the notificatio
   await page.getByRole('button', { name: '消息中心', exact: true }).click();
   await expect(page.locator('#requisition-notices')).toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'AI 助手', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'AI 任务与复核', exact: true })).toBeVisible();
+  await expect(page.locator('.as-dock').getByLabel('和 AI 招聘助手对话')).toBeVisible();
+  await expect(page).toHaveURL(/\/workbench$/);
+  await page.getByRole('button', { name: 'AI 助手', exact: true }).click();
   await page.getByLabel('全局搜索', { exact: true }).fill('视觉回归查询');
   const searchResult = page.waitForResponse((response) => {
     const url = new URL(response.url());
