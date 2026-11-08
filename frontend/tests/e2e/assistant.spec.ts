@@ -134,6 +134,12 @@ test('HR completes a hiring loop by chatting with the assistant, confirming ever
     // 6. Overview with decision cards and pending work.
     reply = await say(page, '今天有什么要处理');
     await expect(reply.getByText('在招岗位', { exact: true })).toBeVisible();
+    const approvalQuery = page.waitForRequest(
+      (request) => request.url().endsWith('/hr/assistant') && request.method() === 'POST',
+    );
+    await page.getByRole('button', { name: /待我审批/ }).click();
+    expect((await approvalQuery).postDataJSON().text).toBe('今天有什么要处理');
+    await expect(page.locator('.as-typing')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('assistant-loop.png'), fullPage: false });
 
     // Merged A2 keeps resume matching and evidence visible inside the new chat.

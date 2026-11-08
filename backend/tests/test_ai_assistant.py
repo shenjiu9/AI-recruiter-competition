@@ -108,6 +108,23 @@ def test_overview_and_help_answer_without_model(client, login, container, fields
     assert help_["intent"] == "help" and blocks(help_, "list")
 
 
+def test_assistant_overview_includes_current_requisition_approvals(
+    client, login, container, fields
+):
+    from test_organization import permission
+    from test_requisition_api import create
+
+    container.ai_gateway = Router(a0=False)
+    ok(permission(client, login, "manager", ["recruiter"], ["客服中心"]))
+    req = create(client, login, fields)
+    result = ok(say(client, login, "今天有什么要处理", user="manager"))
+    assert "1 条招聘需求待审批" in result["reply"]
+    waiting = next(b for b in blocks(result, "list") if b["title"] == "招聘需求待审批")
+    assert waiting["items"][0]["href"] == f"/requisitions/{req['id']}"
+    other = ok(say(client, login, "今天有什么要处理"))
+    assert not any(b["title"] == "招聘需求待审批" for b in blocks(other, "list"))
+
+
 def test_full_chat_loop_proposes_and_existing_endpoints_execute(client, login, container, fields):
     container.ai_gateway = Router(a0=False)
     enable(client, login)

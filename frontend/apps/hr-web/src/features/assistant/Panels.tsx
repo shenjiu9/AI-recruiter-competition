@@ -51,7 +51,7 @@ export function AssistantRail() {
     {
       label: '待我审批',
       value: c?.my_approvals,
-      ask: '录用进展',
+      ask: '今天有什么要处理',
       tone: c?.my_approvals ? 'warning' : '',
     },
     {

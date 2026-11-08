@@ -398,7 +398,8 @@ class Assistant:
             if iv["status"] in {"waiting", "offered", "scheduled", "awaiting_feedback"}
         ]
         hires = [h for h in wb["hires"] if h["can_handover"] or h["can_result"] or h["can_approve"]]
-        todo = len(wb["cards"]) + len(reviews) + len(hires)
+        requisitions = wb["requisition_approvals"]
+        todo = len(wb["cards"]) + len(reviews) + len(hires) + len(requisitions)
         tight = sorted(
             (p for p in wb["positions"] if p["status"] == "open" and p["remaining"]),
             key=lambda p: -p["remaining"],
@@ -409,6 +410,7 @@ class Assistant:
                 (len(wb["cards"]), "张决策卡待你决定"),
                 (len(reviews), "个 AI 结果待复核"),
                 (len(hires), "个录用待办"),
+                (len(requisitions), "条招聘需求待审批"),
             )
             if n
         ]
@@ -433,9 +435,29 @@ class Assistant:
                     {"label": "AI 待复核", "value": len(reviews), "tone": "ai" if reviews else ""},
                     {"label": "进行中面试", "value": len(interviews)},
                     {"label": "录用待办", "value": len(hires)},
+                    {"label": "需求待审批", "value": len(requisitions)},
                 ],
             },
         ]
+        if requisitions:
+            blocks.append(
+                {
+                    "type": "list",
+                    "title": "招聘需求待审批",
+                    "items": [
+                        item(
+                            r["id"],
+                            r["title"],
+                            "当前轮到你审批，点击核对需求后处理",
+                            href=f"/requisitions/{r['id']}",
+                            tag="待审批",
+                            tone="warning",
+                        )
+                        for r in requisitions[:5]
+                    ],
+                    "more_href": "/workbench" if len(requisitions) > 5 else "",
+                }
+            )
         if wb["cards"]:
             blocks.append(
                 {

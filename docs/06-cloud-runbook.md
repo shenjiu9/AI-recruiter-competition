@@ -19,7 +19,7 @@
 
 本机 PowerShell：`ssh ai-recruiter-sgp`，用户 `deploy`，密钥位于本机 `~/.ssh/ai_recruiter_sgp`。服务器禁用 SSH 密码及 root 登录；`deploy` 可 sudo。公网仅开放 TCP 22、80、443；数据库、Redis、API、Dify 原始端口仅绑定回环地址。Docker 内网通过独立网络连接 Dify nginx；Dify API 使用专用 DNS 别名，避免与招聘 API 同名冲突。
 
-部署分支 `deploy/vultr-singapore` 整合最新 main 的 PR #5（自然语言任务）和前端改版分支。不要直接切回不含改版的 main。服务器 GitHub 部署密钥仅能读取本仓库，不能推送。
+部署分支 `deploy/vultr-singapore` 整合 main 的 PR #6（对话式招聘助手）、前端改版及审批/简历匹配反馈修复。不要直接切回不含这些整合修复的 main。服务器 GitHub 部署密钥仅能读取本仓库，不能推送。
 
 更新服务器：
 
@@ -43,13 +43,21 @@ A0/A2/A3/A4 使用 deepseek-flash；A1/A5/A6/A7 使用 deepseek-v4-pro。A1–A7
 
 ```bash
 cd /opt/ai-recruiter/app
-/opt/ai-recruiter/venv/bin/python deploy/provision_dify_local.py --components A0 A2 --sync-drafts --publish
+/opt/ai-recruiter/venv/bin/python deploy/provision_dify_local.py --components A0 A1 A2 A5 A7 --sync-drafts --publish
 docker compose --env-file backend/.env -f deploy/compose.yaml -f deploy/cloud/compose.yaml --profile web up -d
 ```
 
 同步工具保留已有云端地址和未选中组件的密钥，备份旧 DSL，并保持匿名 WebApp 关闭。`activate.py` 仅首次初始化时使用，会设回云端 Docker 地址并启用人工复核策略。新环境首次安装模型还需 `--install-model`，待插件安装完成后运行 `--configure-model --publish`。
 
 ## 验证
+
+2026-11-08 PR #6 整合：默认 HR 首页为 `/assistant`，其他页面顶部「AI 助手」打开侧边聊天面板。保留现有导航风格、审批入口和 A2 的逐人证据匹配；聊天缓存按账号隔离；助手待办同时展示招聘需求审批与录用待办。改动业务数据的操作仍需在确认卡片上手动执行。
+
+整合后 SQLite 全套 433 项通过、3 项跳过；PostgreSQL 隔离重点回归 59 项通过；浏览器全套首轮 39/40，通过修正旧按钮跳转断言并重跑后全部场景验证通过。类型检查、lint、三端构建、OpenAPI 及模块边界检查通过。补充助手审批待办后，相关后端 38 项与助手浏览器完整场景再次通过。
+
+真实 Dify A0 的 29 个合成句子意图识别全部正确；岗位名称 29/29、姓名 28/29（拒绝发 offer 的句子仍提取了原句姓名，不产生执行动作）。A1–A7 全部通过。公网确认卡不自动关联岗位，对话发起 A2 后进入待复核；隔离真实模型招聘闭环再次通过。报告在 `test-results/assistant-router.json`、`dify-assistant-smoke.json`、`cloud-assistant-smoke.json`。部署前的加密备份为 `backups/pre-assistant-20261108.enc`，工作流同步另行保存旧 DSL。
+
+以下为首次云端部署时的验证记录：
 
 本次整合：后端 SQLite 回归 395 通过、3 跳过；三端类型检查和 lint 通过；新版界面浏览器测试 6 项及 AI 流程 2 项通过。3 项跳过不计作通过；本轮没有重新执行 PostgreSQL 专用测试。
 
