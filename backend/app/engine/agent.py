@@ -118,6 +118,15 @@ PRE_RULES = [
         r"找.{0,12}(的候选人|的人)|有没有.{0,12}(候选人|的人)|候选人(列表|库)|人才库里|最近.{0,4}(的)?候选人",
     ),
 ]
+# Offers and pay are decided by people in the hiring flow; the assistant declines them before
+# the "录用|offer" read rule can turn "给张三发offer，月薪两万" into a hires listing.
+OUT_OF_SCOPE = re.compile(
+    r"(发|给|开|谈|出).{0,8}(offer|录用通知)|定薪|谈薪|调薪|涨薪|(月薪|年薪|薪资|工资)(定|开|给|谈|是|为|\d|[一二两三四五六七八九十]|多少)",
+    re.I,
+)
+REFUSAL = (
+    "发 offer 和定薪资要由 HR 在录用流程里亲自操作，我不能代办。我可以帮你看录用待办或候选人进展。"
+)
 POST_RULES = [
     ("A7", r"为什么|瓶颈|分析|洞察|转化|漏斗|卡在|怎么办|改进|太慢|很慢"),
     (
@@ -143,6 +152,8 @@ def message_content(text):
 
 
 def agent_rule_route(text):
+    if OUT_OF_SCOPE.search(text):
+        return AgentRoute(intent="none", reason=REFUSAL)
     for intent, pattern in [*PRE_RULES, *TASK_RULES, *POST_RULES]:
         if re.search(pattern, text, re.I):
             content = ""
@@ -259,7 +270,9 @@ class Assistant:
 
     def run(self):
         intent = self.route.intent
-        if self.source == "rules":
+        if OUT_OF_SCOPE.search(self.text):
+            intent = "none"
+        elif self.source == "rules":
             # "张三怎么样" names a person: answer with that person, not a position overview.
             if intent in {"positions", "overview", "none", "candidates"} and (
                 self.cand_hits and not self.mentions_position()
@@ -308,6 +321,8 @@ class Assistant:
         )
 
     def unknown(self):
+        if OUT_OF_SCOPE.search(self.text):
+            return self.answer("none", REFUSAL, [], ["录用待办", "今天有什么要我处理的"])
         return self.answer(
             "none",
             "这句话我还没理解要做什么。可以问我进展、让 AI 写东西或评估，也可以让我推进流程。",
