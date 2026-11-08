@@ -18,6 +18,7 @@ import { SalarySettingsPage } from '../pages/SalarySettingsPage';
 import { OrganizationSettingsPage } from '../pages/OrganizationSettingsPage';
 import { HiringPage } from '../pages/HiringPage';
 import { AiJobsPage } from '../pages/AiJobsPage';
+import { AssistantPage } from '../pages/AssistantPage';
 
 export const router = createBrowserRouter([
   {
@@ -27,11 +28,12 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <Navigate
-            to={import.meta.env.VITE_USE_MOCK === 'false' ? '/requisitions' : '/workbench'}
+            to={import.meta.env.VITE_USE_MOCK === 'false' ? '/assistant' : '/workbench'}
             replace
           />
         ),
       },
+      { path: 'assistant', element: <AssistantPage /> },
       { path: 'workbench', element: <WorkbenchPage /> },
       { path: 'ai-jobs', element: <AiJobsPage /> },
       { path: 'hiring', element: <HiringPage /> },

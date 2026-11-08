@@ -168,7 +168,7 @@ test('真实 API：HR 保存恢复草稿、提交、业务方驳回、重提、�
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const title = `联调客服-${Date.now()}`;
-  await login(page, 'hr');
+  await login(page, 'hr', '/requisitions');
   await page.getByRole('button', { name: '发起招聘需求', exact: true }).click();
   await select(page, '#f-dept', '客服中心');
   await page.getByText('新增', { exact: true }).click();

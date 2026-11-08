@@ -18,7 +18,7 @@ from difflib import SequenceMatcher
 from pydantic import ValidationError
 
 from app.engine.context import sanitize
-from app.engine.contracts import Route, StartJob
+from app.engine.contracts import AgentRoute, Route, StartJob
 from app.kernel.types import DomainError
 
 NAMES = {
@@ -116,13 +116,28 @@ def grounded(route, text):
     return route.model_copy(update=updates)
 
 
+def as_route(output):
+    """A0 answers with the assistant schema; reduce it to the A1–A7 task route."""
+    if "intent" not in output:
+        return Route.model_validate(output)
+    agent = AgentRoute.model_validate(output)
+    task = agent.intent if agent.intent in NAMES else "none"
+    return Route(
+        component=task,
+        position=agent.position,
+        candidate=agent.candidate,
+        transcript=agent.content if task == "A6" else "",
+        reason=agent.reason,
+    )
+
+
 def route_text(gateway, text, action_id):
     """Return (route, source). Called with no database transaction open."""
     clean = sanitize(text)
     if gateway.configured("A0"):
         try:
             result = gateway.call("A0", {"text": clean}, action_id)
-            return grounded(Route.model_validate(result["output"]), clean), "model"
+            return grounded(as_route(result["output"]), clean), "model"
         except (DomainError, ValidationError, KeyError, TypeError, ValueError):
             pass  # Fall back to rules; a router outage must not block the HR.
     return rule_route(clean), "rules"

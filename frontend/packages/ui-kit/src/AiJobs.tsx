@@ -491,7 +491,7 @@ export function AiJobs({ business = false, ask }: { business?: boolean; ask?: st
   const [objectId, setObjectId] = useState(query.get('object') ?? '');
   const [prompt, setPrompt] = useState('');
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(query.get('job') ?? '');
   const health = useLiveData('ai-health', () => api.aiHealth());
   const jobs = useLiveData(String(page), () => api.aiJobs(page));
   const detail = useLiveData(selected, async () => (selected ? api.aiJob(selected) : undefined));
